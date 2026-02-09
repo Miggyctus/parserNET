@@ -1,32 +1,69 @@
-import requests
 import json
+import requests
+from openai import OpenAI
 
-LM_URL = "http://localhost:1234/v1/chat/completions"
+# =========================
+# LM Studio client
+# =========================
+client = OpenAI(
+    base_url="http://localhost:1234/v1",
+    api_key="lm-studio"
+)
+
+MODEL_ID = "qwen2.5-14b-instruct"  # <-- usa EXACTAMENTE el ID de /v1/models
 BACKEND_URL = "http://localhost:8000/execute"
 PROMPT_FILE = "prompt.json"
 
 
+# =========================
+# Utils
+# =========================
 def load_system_prompt():
     with open(PROMPT_FILE, "r", encoding="utf-8") as f:
-        data = json.load(f)
-    return data["system_prompt"]
+        return json.load(f)["system_prompt"]
 
 
-def ask_llm(system_prompt, user_input):
-    payload = {
-        "model": "local-model",
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_input}
+def sanitize_prompt(text: str) -> str:
+    # Elimina caracteres problemáticos (como en tus screenshots)
+    return (
+        text
+        .replace("─", "-")
+        .replace("–", "-")
+        .replace("—", "-")
+    )
+
+
+# =========================
+# LLM call (MATCH UI 1:1)
+# =========================
+def ask_llm(system_prompt: str, user_input: str) -> str:
+    completion = client.chat.completions.create(
+        model=MODEL_ID,
+        messages=[
+            {
+                "role": "system",
+                "content": sanitize_prompt(system_prompt)
+            },
+            {
+                "role": "user",
+                "content": user_input
+            }
         ],
-        "temperature": 0
-    }
 
-    r = requests.post(LM_URL, json=payload)
-    r.raise_for_status()
-    return r.json()["choices"][0]["message"]["content"]
+        # ====== EXACTAMENTE COMO EN LA UI ======
+        temperature=0.42,        # UI: Temperature 0.0
+        top_p=0.85,              # UI: Top P 1.0
+        top_k=40,                # UI: Top K 1   (LM Studio extension)                    # UI: Max Concurrent Predictions = 1
+        max_tokens=34000
+        # ======================================
+    )
+
+    return completion.choices[0].message.content
 
 
+# =========================
+# Main pipeline
+# =========================
 def main():
     system_prompt = load_system_prompt()
 
@@ -37,13 +74,14 @@ def main():
 
     response = ask_llm(system_prompt, user_input)
 
-    print("\nLLM RAW RESPONSE:\n")
+    print("\n===== LLM RAW RESPONSE =====\n")
     print(response)
 
+    # STRICT JSON ONLY
     try:
         data = json.loads(response)
     except json.JSONDecodeError:
-        print("\n❌ The model did not return valid JSON")
+        print("\n❌ ERROR: Model did not return valid JSON")
         return
 
     if "action" in data:
