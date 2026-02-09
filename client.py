@@ -10,7 +10,7 @@ client = OpenAI(
     api_key="lm-studio"
 )
 
-MODEL_ID = "qwen2.5-14b-instruct"  # <-- usa EXACTAMENTE el ID de /v1/models
+MODEL_ID = "glm-4.7-flash-claude-opus-4.5-high-reasoning-distill"  # <-- usa EXACTAMENTE el ID de /v1/models
 BACKEND_URL = "http://localhost:8000/execute"
 PROMPT_FILE = "prompt.json"
 
