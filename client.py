@@ -24,6 +24,12 @@ MAX_ROWS_PER_CSV = 5000              # protección contra CSV gigantes
 # =========================
 # Utils
 # =========================
+def strip_markdown_json(text: str) -> str:
+    text = text.strip()
+    if text.startswith("```"):
+        text = text.split("```")[1]
+    return text.strip()
+
 def load_system_prompt():
     with open(PROMPT_FILE, "r", encoding="utf-8") as f:
         return json.load(f)["system_prompt"]
@@ -115,9 +121,9 @@ def main():
 
     print("\n===== LLM RAW RESPONSE =====\n")
     print(response)
-
+    clean_response = strip_markdown_json(response)
     try:
-        json.loads(response)
+        json.loads(clean_response)
         print("\n✅ Valid JSON received")
     except json.JSONDecodeError:
         print("\n❌ Response is not valid JSON")
