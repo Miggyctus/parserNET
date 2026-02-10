@@ -1,18 +1,24 @@
 import json
 import requests
 from openai import OpenAI
+import os
+import csv
+import httpx
 
 # =========================
 # LM Studio client
 # =========================
 client = OpenAI(
     base_url="http://localhost:1234/v1",
-    api_key="lm-studio"
+    api_key="lm-studio",
+    http_client=httpx.Client(timeout=99999.0)
 )
 
 MODEL_ID = "glm-4.7-flash-claude-opus-4.5-high-reasoning-distill"  # <-- usa EXACTAMENTE el ID de /v1/models
 BACKEND_URL = "http://localhost:8000/execute"
 PROMPT_FILE = "prompt.json"
+CSV_FOLDER = "input_csv"
+MAX_ROWS_PER_CSV = 5000              # protección contra CSV gigantes
 
 
 # =========================
@@ -23,30 +29,66 @@ def load_system_prompt():
         return json.load(f)["system_prompt"]
 
 
-def sanitize_prompt(text: str) -> str:
-    # Elimina caracteres problemáticos (como en tus screenshots)
+def sanitize_text(text: str) -> str:
     return (
-        text
-        .replace("─", "-")
-        .replace("–", "-")
-        .replace("—", "-")
+        text.replace("─", "-")
+            .replace("–", "-")
+            .replace("—", "-")
     )
 
 
+def load_all_csv(folder_path: str) -> dict:
+    telemetry = {}
+
+    for file in os.listdir(folder_path):
+        if not file.lower().endswith(".csv"):
+            continue
+
+        file_path = os.path.join(folder_path, file)
+        rows = []
+
+        with open(file_path, newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for i, row in enumerate(reader):
+                if i >= MAX_ROWS_PER_CSV:
+                    break
+                rows.append(row)
+
+        telemetry[file] = rows
+
+    return telemetry
+
+
 # =========================
-# LLM call (MATCH UI 1:1)
+# LLM Call
 # =========================
-def ask_llm(system_prompt: str, user_input: str) -> str:
+def ask_llm(system_prompt: str, telemetry: dict) -> str:
+    telemetry_json = json.dumps(telemetry, indent=2)
+
+    user_input = f"""
+The following section contains structured security telemetry collected from multiple vendors.
+Each CSV file has been converted to JSON and grouped by filename.
+
+Analyze this data strictly according to your instructions.
+
+=== BEGIN TELEMETRY ===
+{telemetry_json}
+=== END TELEMETRY ===
+
+Generate ONLY the required JSON chart definitions.
+Do NOT generate the final report yet.
+"""
+
     completion = client.chat.completions.create(
         model=MODEL_ID,
         messages=[
             {
                 "role": "system",
-                "content": user_input
+                "content": " "
             },
             {
                 "role": "user",
-                "content": sanitize_prompt(system_prompt)
+                "content": sanitize_text(system_prompt) + user_input
             }
         ],
         temperature=0.4,
@@ -59,35 +101,26 @@ def ask_llm(system_prompt: str, user_input: str) -> str:
 
 
 # =========================
-# Main pipeline
+# Main
 # =========================
 def main():
     system_prompt = load_system_prompt()
+    telemetry = load_all_csv(CSV_FOLDER)
 
-    user_input = (
-        "Generate a full audit report using simulated security telemetry. "
-        "Produce all mandatory charts and finalize the report."
-    )
+    if not telemetry:
+        print("❌ No CSV files found in input folder")
+        return
 
-    response = ask_llm(system_prompt, user_input)
+    response = ask_llm(system_prompt, telemetry)
 
     print("\n===== LLM RAW RESPONSE =====\n")
     print(response)
 
-    # STRICT JSON ONLY
     try:
-        data = json.loads(response)
+        json.loads(response)
+        print("\n✅ Valid JSON received")
     except json.JSONDecodeError:
-        print("\n❌ ERROR: Model did not return valid JSON")
-        return
-
-    if "action" in data:
-        print(f"\n▶ Action detected: {data['action']}")
-        r = requests.post(BACKEND_URL, json=data)
-        print("Backend response:")
-        print(r.json())
-    else:
-        print("\nℹ No action detected")
+        print("\n❌ Response is not valid JSON")
 
 
 if __name__ == "__main__":
