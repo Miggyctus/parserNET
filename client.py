@@ -84,11 +84,11 @@ Do NOT generate the final report yet.
         messages=[
             {
                 "role": "system",
-                "content": " "
+                "content": sanitize_text(system_prompt)
             },
             {
                 "role": "user",
-                "content": sanitize_text(system_prompt) + user_input
+                "content": user_input
             }
         ],
         temperature=0.4,
