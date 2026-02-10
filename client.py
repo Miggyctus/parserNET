@@ -42,20 +42,17 @@ def ask_llm(system_prompt: str, user_input: str) -> str:
         messages=[
             {
                 "role": "system",
-                "content": sanitize_prompt(system_prompt)
+                "content": user_input
             },
             {
                 "role": "user",
-                "content": user_input
+                "content": sanitize_prompt(system_prompt)
             }
         ],
-
-        # ====== EXACTAMENTE COMO EN LA UI ======
-        temperature=0.42,        # UI: Temperature 0.0
-        top_p=0.85,              # UI: Top P 1.0
-        top_k=40,                # UI: Top K 1   (LM Studio extension)                    # UI: Max Concurrent Predictions = 1
-        max_tokens=34000
-        # ======================================
+        temperature=0.4,
+        top_p=1.0,
+        max_tokens=12000,
+        n=1
     )
 
     return completion.choices[0].message.content
