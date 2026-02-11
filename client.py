@@ -146,6 +146,20 @@ def main():
     try:
         parsed = safe_json_load(response)
         print("\n✅ Valid JSON received")
+        try:
+            backend_response = requests.post(
+                BACKEND_URL,
+                json=parsed,
+                timeout=30
+            )   
+
+            print("\n📡 Backend status:", backend_response.status_code)
+            print("📨 Backend response:", backend_response.text)
+
+        except Exception as e:
+            print("\n❌ Error communicating with backend:")
+            print(e)
+
     except Exception as e:
             print("\n❌ Response is not valid JSON")
             print("Error:", e)
