@@ -4,6 +4,7 @@ from openai import OpenAI
 import os
 import csv
 import httpx
+import re
 
 # =========================
 # LM Studio client
@@ -24,10 +25,31 @@ MAX_ROWS_PER_CSV = 5000              # protección contra CSV gigantes
 # =========================
 # Utils
 # =========================
-def strip_markdown_json(text: str) -> str:
-    text = text.strip()
-    if text.startswith("```"):
-        text = text.split("```")[1]
+def safe_json_load(text: str):
+    cleaned = extract_json(text)
+
+    # Reparaciones comunes del LLM
+    cleaned = cleaned.replace(")", "}")
+    cleaned = re.sub(r",\s*}", "}", cleaned)
+    cleaned = re.sub(r",\s*]", "]", cleaned)
+
+    return json.loads(cleaned)
+
+def extract_json(text: str) -> str:
+    """
+    Extrae el primer objeto JSON válido dentro del texto,
+    incluso si viene envuelto en markdown o con texto extra.
+    """
+    # Caso ```json ... ```
+    fenced_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
+    if fenced_match:
+        return fenced_match.group(1)
+
+    # Caso JSON sin markdown
+    brace_match = re.search(r"(\{.*\})", text, re.DOTALL)
+    if brace_match:
+        return brace_match.group(1)
+
     return text.strip()
 
 def load_system_prompt():
@@ -121,12 +143,13 @@ def main():
 
     print("\n===== LLM RAW RESPONSE =====\n")
     print(response)
-    clean_response = strip_markdown_json(response)
     try:
-        json.loads(clean_response)
+        parsed = safe_json_load(response)
         print("\n✅ Valid JSON received")
-    except json.JSONDecodeError:
-        print("\n❌ Response is not valid JSON")
+    except Exception as e:
+            print("\n❌ Response is not valid JSON")
+            print("Error:", e)
+
 
 
 if __name__ == "__main__":
