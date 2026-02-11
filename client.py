@@ -145,16 +145,25 @@ def main():
     print(response)
     try:
         parsed = safe_json_load(response)
+        os.makedirs("output/json", exist_ok=True)
+
+        json_path = "output/json/llm_output.json"
+
+        with open(json_path, "w", encoding="utf-8") as f:
+            json.dump(parsed, f, indent=2)
+
+        print("JSON guardado en:", json_path)
+
         print("\n✅ Valid JSON received")
         try:
             backend_response = requests.post(
-                BACKEND_URL,
-                json={
-                    "action": "generate_chart",
-                    "chart": parsed
-                },
-                timeout=30
-            )   
+            BACKEND_URL,
+            json={
+                "action": "generate_chart",
+                "json_path": json_path
+            }
+        )
+
 
             print("\n📡 Backend status:", backend_response.status_code)
             print("📨 Backend response:", backend_response.text)
