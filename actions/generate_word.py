@@ -6,10 +6,10 @@ from docx.shared import Inches
 
 payload = json.loads(sys.argv[1])
 
-report_title = payload["report_title"]
-summary = payload["summary"]
-sections = payload["sections"]
-charts_used = payload.get("charts_used", [])
+report_title = payload.get("report_title", "Security Report")
+summary = payload.get("summary", "")
+sections = payload.get("sections", "")
+charts = payload.get("charts", {})
 
 output_dir = "output/reports"
 os.makedirs(output_dir, exist_ok=True)
@@ -31,11 +31,11 @@ doc.add_heading("Detailed Analysis", level=1)
 doc.add_paragraph(sections)
 
 # Charts
-if charts_used:
+if charts:
     doc.add_page_break()
     doc.add_heading("Charts and Visual Evidence", level=1)
 
-    for chart_id in charts_used:
+    for chart_id in charts.keys():
         chart_path = f"output/charts/{chart_id}.png"
         if os.path.exists(chart_path):
             doc.add_picture(chart_path, width=Inches(6))
@@ -43,4 +43,6 @@ if charts_used:
 
 doc.save(filename)
 
-print(filename)
+print(json.dumps({
+    "generated_report": filename
+}))

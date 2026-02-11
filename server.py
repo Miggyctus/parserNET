@@ -17,6 +17,7 @@ def execute(payload: dict):
         raise HTTPException(status_code=400, detail="Action not allowed")
 
     try:
+        # 1️⃣ Ejecutar acción principal
         process = subprocess.run(
             ["python", ACTIONS[action], json.dumps(payload)],
             capture_output=True,
@@ -24,9 +25,25 @@ def execute(payload: dict):
             check=True
         )
 
+        result_main = process.stdout.strip()
+
+        # 2️⃣ Si fue generate_chart → ejecutar también generate_word
+        result_word = None
+
+        if action == "generate_chart":
+            process_word = subprocess.run(
+                ["python", ACTIONS["generate_word"], json.dumps(payload)],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+
+            result_word = process_word.stdout.strip()
+
         return {
             "status": "ok",
-            "result": process.stdout.strip()
+            "chart_result": result_main,
+            "word_result": result_word
         }
 
     except subprocess.CalledProcessError as e:

@@ -149,7 +149,10 @@ def main():
         try:
             backend_response = requests.post(
                 BACKEND_URL,
-                json=parsed,
+                json={
+                    "action": "generate_chart",
+                    "chart": parsed
+                },
                 timeout=30
             )   
 

@@ -4,49 +4,48 @@ import os
 import matplotlib.pyplot as plt
 
 payload = json.loads(sys.argv[1])
-chart = payload["chart"]
-
-chart_id = chart["chart_id"]
-chart_type = chart["chart_type"]
-title = chart["title"]
-
-x_values = chart["x_axis"]["values"]
-series = chart.get("series", [])
+charts = payload.get("charts", {})
 
 output_dir = "output/charts"
 os.makedirs(output_dir, exist_ok=True)
 
-filename = f"{output_dir}/{chart_id}.png"
+generated_files = []
 
-plt.figure()
+for chart_id, chart in charts.items():
+    chart_type = chart.get("chart_type")
+    title = chart_id.replace("_", " ").title()
+    data = chart.get("data", [])
 
-if chart_type == "bar":
-    for s in series:
-        plt.bar(x_values, s["values"], label=s["name"])
-    plt.legend()
+    filename = f"{output_dir}/{chart_id}.png"
 
-elif chart_type == "line":
-    for s in series:
-        plt.plot(x_values, s["values"], label=s["name"])
-    plt.legend()
+    plt.figure()
 
-elif chart_type == "pie":
-    values = series[0]["values"] if series else []
-    plt.pie(values, labels=x_values, autopct="%1.1f%%")
+    if chart_type == "bar":
+        labels = [list(item.values())[0] for item in data]
+        values = [item["count"] for item in data]
+        plt.bar(labels, values)
 
-elif chart_type == "stacked_bar":
-    bottom = [0] * len(x_values)
-    for s in series:
-        plt.bar(x_values, s["values"], bottom=bottom, label=s["name"])
-        bottom = [b + v for b, v in zip(bottom, s["values"])]
-    plt.legend()
+    elif chart_type == "stacked_bar":
+        labels = [item.get("vendor_device", "Unknown") for item in data]
+        values = [item["count"] for item in data]
+        plt.bar(labels, values)
 
-else:
-    raise ValueError("Unsupported chart type")
+    elif chart_type == "pie":
+        labels = [list(item.values())[0] for item in data]
+        values = [item["count"] for item in data]
+        plt.pie(values, labels=labels, autopct="%1.1f%%")
 
-plt.title(title)
-plt.tight_layout()
-plt.savefig(filename)
-plt.close()
+    else:
+        continue
 
-print(filename)
+    plt.title(title)
+    plt.xticks(rotation=45, ha="right")
+    plt.tight_layout()
+    plt.savefig(filename)
+    plt.close()
+
+    generated_files.append(filename)
+
+print(json.dumps({
+    "generated_charts": generated_files
+}))
