@@ -19,7 +19,7 @@ def execute(payload: dict):
     try:
         # 1️⃣ Ejecutar acción principal
         process = subprocess.run(
-            ["python", ACTIONS[action], json.dumps(payload)],
+            ["python", ACTIONS[action]],
             capture_output=True,
             text=True,
             check=True
