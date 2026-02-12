@@ -91,18 +91,17 @@ def load_all_csv(folder_path: str) -> dict:
 # LLM Call
 # =========================
 def ask_llm(system_prompt: str, telemetry: dict) -> dict:
-    telemetry_json = json.dumps(telemetry, separators=(",", ":"))  # sin indent para reducir tokens
+    telemetry_json = json.dumps(telemetry, separators=(",", ":"))
 
     user_input = f"""
-    The following section contains structured security telemetry collected from multiple vendors.
+The following section contains structured security telemetry.
 
-    === BEGIN TELEMETRY ===
-    {telemetry_json}
-    === END TELEMETRY ===
+=== BEGIN TELEMETRY ===
+{telemetry_json}
+=== END TELEMETRY ===
 
-    Generate ONLY the required JSON chart definitions.
-    Return valid JSON only.
-    """
+Generate chart data only.
+"""
 
     completion = client.chat.completions.create(
         model=MODEL_ID,
@@ -111,11 +110,42 @@ def ask_llm(system_prompt: str, telemetry: dict) -> dict:
             {"role": "user", "content": user_input}
         ],
         temperature=0.6,
-        max_tokens=10000,  # 🔥 NO 25000
-        response_format={"type": "json_object"}  # 🔥 NIVEL 1
+        max_tokens=10000,
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "name": "charts_schema",
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                        "charts": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "object",
+                                "properties": {
+                                    "chart_type": {
+                                        "type": "string"
+                                    },
+                                    "data": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": ["string", "number"]
+                                            }
+                                        }
+                                    }
+                                },
+                                "required": ["chart_type", "data"]
+                            }
+                        }
+                    },
+                    "required": ["charts"]
+                }
+            }
+        }
     )
 
-    # Cuando usás response_format, el content YA es JSON válido
     return json.loads(completion.choices[0].message.content)
 
 
@@ -129,11 +159,11 @@ def main():
     if not telemetry:
         print("❌ No CSV files found in input folder")
         return
-    parsed = ask_llm(system_prompt, telemetry)
 
-    print("\n===== LLM PARSED JSON =====\n")
-    print(json.dumps(parsed, indent=2))
+    response = ask_llm(system_prompt, telemetry)
 
+    print("\n===== LLM RAW RESPONSE =====\n")
+    print(response)
     try:
         parsed = safe_json_load(response)
         os.makedirs("output/json", exist_ok=True)
