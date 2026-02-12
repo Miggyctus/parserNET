@@ -90,42 +90,33 @@ def load_all_csv(folder_path: str) -> dict:
 # =========================
 # LLM Call
 # =========================
-def ask_llm(system_prompt: str, telemetry: dict) -> str:
-    telemetry_json = json.dumps(telemetry, indent=2)
+def ask_llm(system_prompt: str, telemetry: dict) -> dict:
+    telemetry_json = json.dumps(telemetry, separators=(",", ":"))  # sin indent para reducir tokens
 
     user_input = f"""
-The following section contains structured security telemetry collected from multiple vendors.
-Each CSV file has been converted to JSON and grouped by filename.
+    The following section contains structured security telemetry collected from multiple vendors.
 
-Analyze this data strictly according to your instructions.
+    === BEGIN TELEMETRY ===
+    {telemetry_json}
+    === END TELEMETRY ===
 
-=== BEGIN TELEMETRY ===
-{telemetry_json}
-=== END TELEMETRY ===
-
-Generate ONLY the required JSON chart definitions.
-Do NOT generate the final report yet.
-"""
+    Generate ONLY the required JSON chart definitions.
+    Return valid JSON only.
+    """
 
     completion = client.chat.completions.create(
         model=MODEL_ID,
         messages=[
-            {
-                "role": "system",
-                "content": sanitize_text(system_prompt)
-            },
-            {
-                "role": "user",
-                "content": user_input
-            }
+            {"role": "system", "content": sanitize_text(system_prompt)},
+            {"role": "user", "content": user_input}
         ],
-        temperature=0.5,
-        top_p=1.0,
-        max_tokens=25000,
-        n=1
+        temperature=0.2,
+        max_tokens=5000,  # 🔥 NO 25000
+        response_format={"type": "json_object"}  # 🔥 NIVEL 1
     )
 
-    return completion.choices[0].message.content
+    # Cuando usás response_format, el content YA es JSON válido
+    return json.loads(completion.choices[0].message.content)
 
 
 # =========================
