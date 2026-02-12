@@ -119,25 +119,7 @@ Generate chart data only.
                     "type": "object",
                     "properties": {
                         "charts": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "object",
-                                "properties": {
-                                    "chart_type": {
-                                        "type": "string"
-                                    },
-                                    "data": {
-                                        "type": "array",
-                                        "items": {
-                                            "type": "object",
-                                            "additionalProperties": {
-                                                "type": ["string", "number"]
-                                            }
-                                        }
-                                    }
-                                },
-                                "required": ["chart_type", "data"]
-                            }
+                            "type": "object"
                         }
                     },
                     "required": ["charts"]
@@ -146,7 +128,12 @@ Generate chart data only.
         }
     )
 
-    return json.loads(completion.choices[0].message.content)
+    raw_content = completion.choices[0].message.content
+
+    if not raw_content:
+        raise Exception("LLM returned empty content")
+
+    return json.loads(raw_content)
 
 
 # =========================
@@ -160,12 +147,13 @@ def main():
         print("❌ No CSV files found in input folder")
         return
 
-    response = ask_llm(system_prompt, telemetry)
+    parsed = ask_llm(system_prompt, telemetry)
 
-    print("\n===== LLM RAW RESPONSE =====\n")
-    print(response)
+    print("\n===== LLM PARSED JSON =====\n")
+    print(json.dumps(parsed, indent=2))
+
     try:
-        parsed = safe_json_load(response)
+        #parsed = safe_json_load(response)
         os.makedirs("output/json", exist_ok=True)
 
         json_path = "output/json/llm_output.json"
