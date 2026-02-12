@@ -90,50 +90,42 @@ def load_all_csv(folder_path: str) -> dict:
 # =========================
 # LLM Call
 # =========================
-def ask_llm(system_prompt: str, telemetry: dict) -> dict:
-    telemetry_json = json.dumps(telemetry, separators=(",", ":"))
+def ask_llm(system_prompt: str, telemetry: dict) -> str:
+    telemetry_json = json.dumps(telemetry, indent=2)
 
     user_input = f"""
-The following section contains structured security telemetry.
+The following section contains structured security telemetry collected from multiple vendors.
+Each CSV file has been converted to JSON and grouped by filename.
+
+Analyze this data strictly according to your instructions.
 
 === BEGIN TELEMETRY ===
 {telemetry_json}
 === END TELEMETRY ===
 
-Generate chart data only.
+Generate ONLY the required JSON chart definitions.
+Do NOT generate the final report yet.
 """
 
     completion = client.chat.completions.create(
         model=MODEL_ID,
         messages=[
-            {"role": "system", "content": sanitize_text(system_prompt)},
-            {"role": "user", "content": user_input}
-        ],
-        temperature=0.6,
-        max_tokens=10000,
-        response_format={
-            "type": "json_schema",
-            "json_schema": {
-                "name": "charts_schema",
-                "schema": {
-                    "type": "object",
-                    "properties": {
-                        "charts": {
-                            "type": "object"
-                        }
-                    },
-                    "required": ["charts"]
-                }
+            {
+                "role": "system",
+                "content": sanitize_text(system_prompt)
+            },
+            {
+                "role": "user",
+                "content": user_input
             }
-        }
+        ],
+        temperature=0.5,
+        top_p=1.0,
+        max_tokens=25000,
+        n=1
     )
 
-    raw_content = completion.choices[0].message.content
-
-    if not raw_content:
-        raise Exception("LLM returned empty content")
-
-    return json.loads(raw_content)
+    return completion.choices[0].message.content
 
 
 # =========================
@@ -147,13 +139,12 @@ def main():
         print("❌ No CSV files found in input folder")
         return
 
-    parsed = ask_llm(system_prompt, telemetry)
+    response = ask_llm(system_prompt, telemetry)
 
-    print("\n===== LLM PARSED JSON =====\n")
-    print(json.dumps(parsed, indent=2))
-
+    print("\n===== LLM RAW RESPONSE =====\n")
+    print(response)
     try:
-        #parsed = safe_json_load(response)
+        parsed = safe_json_load(response)
         os.makedirs("output/json", exist_ok=True)
 
         json_path = "output/json/llm_output.json"
