@@ -110,8 +110,8 @@ def ask_llm(system_prompt: str, telemetry: dict) -> dict:
             {"role": "system", "content": sanitize_text(system_prompt)},
             {"role": "user", "content": user_input}
         ],
-        temperature=0.2,
-        max_tokens=5000,  # 🔥 NO 25000
+        temperature=0.6,
+        max_tokens=10000,  # 🔥 NO 25000
         response_format={"type": "json_object"}  # 🔥 NIVEL 1
     )
 
