@@ -129,11 +129,11 @@ def main():
     if not telemetry:
         print("❌ No CSV files found in input folder")
         return
+    parsed = ask_llm(system_prompt, telemetry)
 
-    response = ask_llm(system_prompt, telemetry)
+    print("\n===== LLM PARSED JSON =====\n")
+    print(json.dumps(parsed, indent=2))
 
-    print("\n===== LLM RAW RESPONSE =====\n")
-    print(response)
     try:
         parsed = safe_json_load(response)
         os.makedirs("output/json", exist_ok=True)
