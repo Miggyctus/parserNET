@@ -95,7 +95,6 @@ def ask_llm(system_prompt: str, telemetry: dict) -> str:
 
     user_input = f"""
 The following section contains structured security telemetry collected from multiple vendors.
-Each CSV file has been converted to JSON and grouped by filename.
 
 Analyze this data strictly according to your instructions.
 
