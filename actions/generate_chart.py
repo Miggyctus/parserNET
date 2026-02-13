@@ -84,7 +84,14 @@ for chart_id, chart in charts.items():
         continue
 
     if chart_type == "bar":
+        values_sorted = sorted(zip(labels, values), key=lambda x: x[1], reverse=True)
+
+        labels, values = zip(*values_sorted)
+
         plt.bar(labels, values)
+        plt.grid(axis='y', linestyle='--', alpha=0.5)
+        plt.xticks(rotation=45, ha="right", fontsize=8)
+
 
     elif chart_type == "horizontal_bar":
         plt.barh(labels, values)

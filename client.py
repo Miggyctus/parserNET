@@ -15,7 +15,7 @@ client = OpenAI(
     http_client=httpx.Client(timeout=99999.0)
 )
 
-MODEL_ID = "glm-4.7-flash-claude-opus-4.5-high-reasoning-distill"  # <-- usa EXACTAMENTE el ID de /v1/models
+MODEL_ID = "qwen/qwq-32b"  # <-- usa EXACTAMENTE el ID de /v1/models
 BACKEND_URL = "http://localhost:8000/execute"
 PROMPT_FILE = "prompt.json"
 CSV_FOLDER = "input_csv"
@@ -101,6 +101,16 @@ Analyze this data strictly according to your instructions.
 === BEGIN TELEMETRY ===
 {telemetry_json}
 === END TELEMETRY ===
+You must generate at least the following charts when data allows:
+
+1. Common Event Count (Top event types)
+2. Events by Severity
+3. Events by Priority
+4. Events by Vendor/File
+5. Top 5 Events Only (sorted descending)
+
+If a chart cannot be generated due to missing data, skip it.
+Always return multiple charts inside the "charts" object.
 
 Generate ONLY the required JSON chart definitions.
 Do NOT generate the final report yet.
