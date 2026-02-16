@@ -5,52 +5,93 @@ import os
 import csv
 import httpx
 import re
+from contextlib import contextmanager
 
 # =========================
 # LM Studio client
 # =========================
+BASE_URL = "http://localhost:1234/v1"
+
 client = OpenAI(
-    base_url="http://localhost:1234/v1",
+    base_url=BASE_URL,
     api_key="lm-studio",
     http_client=httpx.Client(timeout=99999.0)
 )
 
-MODEL_ID = "qwen/qwq-32b"  # <-- usa EXACTAMENTE el ID de /v1/models
+MODEL_ID = "qwen/qwq-32b"
 BACKEND_URL = "http://localhost:8000/execute"
 PROMPT_FILE = "prompt.json"
 CSV_FOLDER = "input_csv"
-MAX_ROWS_PER_CSV = 5000              # protección contra CSV gigantes
+MAX_ROWS_PER_CSV = 5000
 
 
 # =========================
-# Utils
+# 🔥 NUEVO — Model Load/Unload
 # =========================
+
+def load_model():
+    payload = {
+        "context_length": 15000,
+        "gpu_offload": 45,
+        "cpu_thread_pool_size": 10,
+        "evaluation_batch_size": 256,
+        "concurrency": 4,
+        "unified_kv_cache": True,
+        "offload_kv_cache_to_gpu": True,
+        "keep_model_in_memory": False,
+        "try_mmap": False,
+        "flash_attention": False
+    }
+
+    response = requests.post(
+        f"{BASE_URL}/models/{MODEL_ID}/load",
+        json=payload,
+        timeout=120
+    )
+
+    if response.status_code != 200:
+        raise RuntimeError(f"Failed to load model: {response.text}")
+
+
+def unload_model():
+    requests.post(
+        f"{BASE_URL}/models/{MODEL_ID}/unload",
+        timeout=60
+    )
+
+
+@contextmanager
+def model_session():
+    load_model()
+    try:
+        yield
+    finally:
+        unload_model()
+
+
+# =========================
+# Utils (ORIGINAL)
+# =========================
+
 def safe_json_load(text: str):
     cleaned = extract_json(text)
-
-    # Reparaciones comunes del LLM
     cleaned = cleaned.replace(")", "}")
     cleaned = re.sub(r",\s*}", "}", cleaned)
     cleaned = re.sub(r",\s*]", "]", cleaned)
-
     return json.loads(cleaned)
 
+
 def extract_json(text: str) -> str:
-    """
-    Extrae el primer objeto JSON válido dentro del texto,
-    incluso si viene envuelto en markdown o con texto extra.
-    """
-    # Caso ```json ... ```
     fenced_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
     if fenced_match:
         return fenced_match.group(1)
 
-    # Caso JSON sin markdown
     brace_match = re.search(r"(\{.*\})", text, re.DOTALL)
     if brace_match:
         return brace_match.group(1)
 
     return text.strip()
+
 
 def load_system_prompt():
     with open(PROMPT_FILE, "r", encoding="utf-8") as f:
@@ -88,8 +129,9 @@ def load_all_csv(folder_path: str) -> dict:
 
 
 # =========================
-# LLM Call
+# LLM Call (ORIGINAL)
 # =========================
+
 def ask_llm(system_prompt: str, telemetry: dict) -> str:
     telemetry_json = json.dumps(telemetry, indent=2)
 
@@ -101,16 +143,6 @@ Analyze this data strictly according to your instructions.
 === BEGIN TELEMETRY ===
 {telemetry_json}
 === END TELEMETRY ===
-You must generate at least the following charts when data allows:
-
-1. Common Event Count (Top event types)
-2. Events by Severity
-3. Events by Priority
-4. Events by Vendor/File
-5. Top 5 Events Only (sorted descending)
-
-If a chart cannot be generated due to missing data, skip it.
-Always return multiple charts inside the "charts" object.
 
 Generate ONLY the required JSON chart definitions.
 Do NOT generate the final report yet.
@@ -138,8 +170,9 @@ Do NOT generate the final report yet.
 
 
 # =========================
-# Main
+# Main (Misma lógica + model_session)
 # =========================
+
 def main():
     system_prompt = load_system_prompt()
     telemetry = load_all_csv(CSV_FOLDER)
@@ -148,43 +181,45 @@ def main():
         print("❌ No CSV files found in input folder")
         return
 
-    response = ask_llm(system_prompt, telemetry)
+    # 🔥 SOLO ENVOLVEMOS LA LLAMADA AL LLM
+    with model_session():
 
-    print("\n===== LLM RAW RESPONSE =====\n")
-    print(response)
-    try:
-        parsed = safe_json_load(response)
-        os.makedirs("output/json", exist_ok=True)
+        response = ask_llm(system_prompt, telemetry)
 
-        json_path = "output/json/llm_output.json"
+        print("\n===== LLM RAW RESPONSE =====\n")
+        print(response)
 
-        with open(json_path, "w", encoding="utf-8") as f:
-            json.dump(parsed, f, indent=2)
-
-        print("JSON guardado en:", json_path)
-
-        print("\n✅ Valid JSON received")
         try:
-            backend_response = requests.post(
-            BACKEND_URL,
-            json={
-                "action": "generate_chart",
-                "json_path": json_path
-            }
-        )
+            parsed = safe_json_load(response)
 
+            os.makedirs("output/json", exist_ok=True)
+            json_path = "output/json/llm_output.json"
 
-            print("\n📡 Backend status:", backend_response.status_code)
-            print("📨 Backend response:", backend_response.text)
+            with open(json_path, "w", encoding="utf-8") as f:
+                json.dump(parsed, f, indent=2)
+
+            print("JSON guardado en:", json_path)
+            print("\n✅ Valid JSON received")
+
+            try:
+                backend_response = requests.post(
+                    BACKEND_URL,
+                    json={
+                        "action": "generate_chart",
+                        "json_path": json_path
+                    }
+                )
+
+                print("\n📡 Backend status:", backend_response.status_code)
+                print("📨 Backend response:", backend_response.text)
+
+            except Exception as e:
+                print("\n❌ Error communicating with backend:")
+                print(e)
 
         except Exception as e:
-            print("\n❌ Error communicating with backend:")
-            print(e)
-
-    except Exception as e:
             print("\n❌ Response is not valid JSON")
             print("Error:", e)
-
 
 
 if __name__ == "__main__":

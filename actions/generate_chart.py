@@ -1,115 +1,95 @@
 import json
 import os
+import pandas as pd
 import matplotlib.pyplot as plt
-
-# =========================
-# Configuración fija
-# =========================
+from typing import Dict, List
 
 JSON_PATH = "output/json/llm_output.json"
 OUTPUT_DIR = "output/charts"
 
-# =========================
-# Verificar archivo
-# =========================
 
-if not os.path.exists(JSON_PATH):
-    print(json.dumps({
-        "generated_charts": [],
-        "error": f"JSON file not found at {JSON_PATH}"
-    }))
-    exit(1)
+class ChartEngine:
 
-# =========================
-# Cargar JSON del LLM
-# =========================
+    def __init__(self, json_path: str):
+        self.json_path = json_path
+        self.data = self._load_json()
 
-with open(JSON_PATH, "r", encoding="utf-8") as f:
-    llm_data = json.load(f)
+    def _load_json(self) -> Dict:
+        if not os.path.exists(self.json_path):
+            raise FileNotFoundError("LLM JSON not found")
+        with open(self.json_path, "r", encoding="utf-8") as f:
+            return json.load(f)
 
-# =========================
-# Detectar estructura
-# =========================
+    def generate(self) -> List[str]:
+        os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-if "charts" in llm_data:
-    charts = llm_data["charts"]
-elif "security_telemetry_summary" in llm_data:
-    charts = llm_data["security_telemetry_summary"].get("chart_data", {})
-else:
-    charts = {}
+        charts = self.data.get("charts", {})
+        generated = []
 
-if not charts:
-    print(json.dumps({
-        "generated_charts": [],
-        "warning": "No charts found in JSON"
-    }))
-    exit(0)
+        for chart_id, chart in charts.items():
+            df = pd.DataFrame(chart.get("data", []))
 
-# =========================
-# Generación de gráficos
-# =========================
+            if df.empty:
+                continue
 
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+            filename = self._render_chart(chart_id, chart, df)
+            if filename:
+                generated.append(filename)
 
-generated_files = []
+        return generated
 
-for chart_id, chart in charts.items():
+    def _render_chart(self, chart_id: str, chart: Dict, df: pd.DataFrame):
 
-    chart_type = chart.get("chart_type", "").lower()
-    data = chart.get("data", [])
+        chart_type = chart.get("chart_type", "bar")
 
-    if not data:
-        continue
+        if "event_count" not in df.columns:
+            return None
 
-    filename = f"{OUTPUT_DIR}/{chart_id}.png"
+        dimension_col = [c for c in df.columns if c != "event_count"][0]
 
-    plt.figure(figsize=(10, 6))
+        df = df.sort_values("event_count", ascending=False)
 
-    labels = []
-    values = []
+        plt.figure(figsize=(10, 6))
 
-    for item in data:
-        # Detectar campo label automáticamente
-        label_keys = [k for k in item.keys() if k not in ("count", "event_count")]
-        if not label_keys:
-            continue
+        if chart_type == "bar":
+            plt.bar(df[dimension_col], df["event_count"])
 
-        label_key = label_keys[0]
-        value_key = "event_count" if "event_count" in item else "count"
+        elif chart_type == "horizontal_bar":
+            plt.barh(df[dimension_col], df["event_count"])
 
-        labels.append(str(item[label_key]))
-        values.append(item[value_key])
+        elif chart_type == "pie":
+            plt.pie(df["event_count"], labels=df[dimension_col], autopct="%1.1f%%")
 
-    if not labels or not values:
-        continue
+        elif chart_type == "stacked_bar":
+            # soporte básico stacked
+            df_pivot = df.pivot_table(
+                index=dimension_col,
+                values="event_count",
+                aggfunc="sum"
+            )
+            df_pivot.plot(kind="bar", stacked=True)
 
-    if chart_type == "bar":
-        values_sorted = sorted(zip(labels, values), key=lambda x: x[1], reverse=True)
+        else:
+            return None
 
-        labels, values = zip(*values_sorted)
+        plt.title(chart_id.replace("_", " ").title())
+        plt.xticks(rotation=45, ha="right")
+        plt.tight_layout()
 
-        plt.bar(labels, values)
-        plt.grid(axis='y', linestyle='--', alpha=0.5)
-        plt.xticks(rotation=45, ha="right", fontsize=8)
+        filename = os.path.join(OUTPUT_DIR, f"{chart_id}.png")
+        plt.savefig(filename)
+        plt.close()
+
+        return filename
 
 
-    elif chart_type == "horizontal_bar":
-        plt.barh(labels, values)
+if __name__ == "__main__":
 
-    elif chart_type == "pie":
-        plt.pie(values, labels=labels, autopct="%1.1f%%")
+    try:
+        engine = ChartEngine(JSON_PATH)
+        files = engine.generate()
 
-    else:
-        continue
+        print(json.dumps({"generated_charts": files}))
 
-    plt.title(chart_id.replace("_", " ").title())
-    plt.xticks(rotation=45, ha="right")
-    plt.tight_layout()
-    plt.savefig(filename)
-    plt.close()
-
-    generated_files.append(filename)
-
-print(json.dumps({
-    "generated_charts": generated_files
-}))
+    except Exception as e:
+        print(json.dumps({"error": str(e)}))
