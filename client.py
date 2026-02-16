@@ -26,25 +26,26 @@ MAX_ROWS_PER_CSV = 5000
 
 
 # =========================
-# 🔥 NUEVO — Model Load/Unload
+# Model Load/Unload (CORRECT ENDPOINT)
 # =========================
 
+MODEL_INSTANCE_ID = None  # guardamos el instance_id real
+
+
 def load_model():
+    global MODEL_INSTANCE_ID
+
     payload = {
+        "model": MODEL_ID,
         "context_length": 15000,
-        "gpu_offload": 45,
-        "cpu_thread_pool_size": 10,
-        "evaluation_batch_size": 256,
-        "concurrency": 4,
-        "unified_kv_cache": True,
+        "eval_batch_size": 256,
+        "flash_attention": False,
         "offload_kv_cache_to_gpu": True,
-        "keep_model_in_memory": False,
-        "try_mmap": False,
-        "flash_attention": False
+        "echo_load_config": True
     }
 
     response = requests.post(
-        f"{BASE_URL}/models/{MODEL_ID}/load",
+        "http://localhost:1234/api/v1/models/load",
         json=payload,
         timeout=120
     )
@@ -52,13 +53,36 @@ def load_model():
     if response.status_code != 200:
         raise RuntimeError(f"Failed to load model: {response.text}")
 
+    data = response.json()
+
+    if data.get("status") != "loaded":
+        raise RuntimeError(f"Model failed to load: {data}")
+
+    MODEL_INSTANCE_ID = data.get("instance_id")
+
+    print("✅ Model loaded")
+    print("Instance ID:", MODEL_INSTANCE_ID)
+    print("Load config:", data.get("load_config"))
+
 
 def unload_model():
-    requests.post(
-        f"{BASE_URL}/models/{MODEL_ID}/unload",
+    global MODEL_INSTANCE_ID
+
+    if not MODEL_INSTANCE_ID:
+        return
+
+    response = requests.post(
+        "http://localhost:1234/api/v1/models/unload",
+        json={"instance_id": MODEL_INSTANCE_ID},
         timeout=60
     )
 
+    if response.status_code == 200:
+        print("🧹 Model unloaded")
+    else:
+        print("⚠️ Unload failed:", response.text)
+
+    MODEL_INSTANCE_ID = None
 
 @contextmanager
 def model_session():
@@ -67,7 +91,6 @@ def model_session():
         yield
     finally:
         unload_model()
-
 
 # =========================
 # Utils (ORIGINAL)
