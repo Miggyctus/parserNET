@@ -174,7 +174,6 @@ Choose the most appropriate chart type based on the nature of the data.
 - Use stacked_bar for multi-dimensional breakdown
 - Use boxplot for numeric distribution
 
-Generate ONLY the required JSON chart definitions.
 Do NOT generate the final report yet.
 """
 

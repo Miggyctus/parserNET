@@ -1,32 +1,22 @@
-import sys
 import json
 import os
 from docx import Document
 from docx.shared import Inches
 from datetime import datetime
 
-# =========================
-# Load payload (si viene)
-# =========================
-
-payload = {}
-
-if len(sys.argv) > 1:
-    try:
-        payload = json.loads(sys.argv[1])
-    except Exception:
-        payload = {}
-
-report_title = payload.get("report_title", "Security Report")
-summary = payload.get("summary", "Automated security telemetry analysis.")
-sections = payload.get("sections", "Detailed analysis generated automatically.")
-
-# =========================
-# Output setup
-# =========================
+REPORT_JSON = "output/json/llm_report.json"
 
 output_dir = "output/reports"
 os.makedirs(output_dir, exist_ok=True)
+
+if not os.path.exists(REPORT_JSON):
+    print(json.dumps({"error": "Report JSON not found"}))
+    exit(1)
+
+with open(REPORT_JSON, "r", encoding="utf-8") as f:
+    report_data = json.load(f)
+
+report_title = report_data.get("report_title", "Security Audit Report")
 
 filename = f"{output_dir}/{report_title.replace(' ', '_').lower()}.docx"
 
@@ -37,28 +27,24 @@ doc = Document()
 # =========================
 
 doc.add_heading(report_title, level=0)
-doc.add_paragraph(f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-
+doc.add_paragraph(f"Fecha de Emisión: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 doc.add_page_break()
 
 # =========================
-# Executive Summary
+# Insert full structured sections
 # =========================
 
-doc.add_heading("Executive Summary", level=1)
-doc.add_paragraph(summary)
+for section_key, section_content in report_data.items():
 
-doc.add_page_break()
+    if section_key == "report_title":
+        continue
 
-# =========================
-# Detailed Analysis
-# =========================
-
-doc.add_heading("Detailed Analysis", level=1)
-doc.add_paragraph(sections)
+    doc.add_heading(section_key.replace("_", " ").title(), level=1)
+    doc.add_paragraph(section_content)
+    doc.add_page_break()
 
 # =========================
-# Charts Section
+# Charts
 # =========================
 
 charts_dir = "output/charts"
@@ -67,8 +53,7 @@ if os.path.exists(charts_dir):
     chart_files = [f for f in os.listdir(charts_dir) if f.endswith(".png")]
 
     if chart_files:
-        doc.add_page_break()
-        doc.add_heading("Charts and Visual Evidence", level=1)
+        doc.add_heading("Anexos – Evidencia Gráfica", level=1)
 
         for file in sorted(chart_files):
             chart_path = os.path.join(charts_dir, file)
@@ -79,10 +64,6 @@ if os.path.exists(charts_dir):
                 style="Caption"
             )
             doc.add_page_break()
-
-# =========================
-# Save Document
-# =========================
 
 doc.save(filename)
 
