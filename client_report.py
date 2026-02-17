@@ -224,6 +224,8 @@ Correlate both sources.
 # PUBLIC FUNCTION FOR PIPELINE
 # =========================
 
+REPORT_TEXT_PATH = "output/reports/llm_report.txt"
+
 def generate_report():
 
     system_prompt = load_system_prompt()
@@ -232,20 +234,21 @@ def generate_report():
 
     with model_session():
         raw = ask_llm(system_prompt, chart_data, csv_analysis)
-        parsed = safe_json_load(raw)
 
-        os.makedirs("output/json", exist_ok=True)
+        if not raw or not raw.strip():
+            raise RuntimeError("LLM returned empty response")
 
-        with open(OUTPUT_JSON, "w", encoding="utf-8") as f:
-            json.dump(parsed, f, indent=2)
+        os.makedirs("output/reports", exist_ok=True)
 
-        return parsed
+        with open(REPORT_TEXT_PATH, "w", encoding="utf-8") as f:
+            f.write(raw)
 
+        return raw
 
 def main():
-    print("Starting report generation...")
+    print("Generating audit report...")
     generate_report()
-    print("Report completed.")
+    print("Report generated successfully.")
 
 
 if __name__ == "__main__":
