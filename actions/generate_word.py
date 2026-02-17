@@ -1,5 +1,6 @@
 import os
 import json
+import re
 from docx import Document
 from docx.shared import Inches
 from datetime import datetime
@@ -45,6 +46,21 @@ def add_table_from_markdown(table_lines):
             table.rows[row_idx].cells[col_idx].text = cell
 
 
+def add_paragraph_with_bold(text):
+    paragraph = doc.add_paragraph()
+
+    # Divide texto en segmentos normales y bold
+    parts = re.split(r"(\*\*.*?\*\*)", text)
+
+    for part in parts:
+        if part.startswith("**") and part.endswith("**"):
+            clean_text = part[2:-2]  # quitar **
+            run = paragraph.add_run(clean_text)
+            run.bold = True
+        else:
+            paragraph.add_run(part)
+
+
 # =========================
 # Insert Report Content
 # =========================
@@ -78,9 +94,9 @@ if os.path.exists(REPORT_TEXT_PATH):
             i += 1
             continue
 
-        # Normal paragraph
+        # Normal paragraph (with bold support)
         if line:
-            doc.add_paragraph(line)
+            add_paragraph_with_bold(line)
 
         i += 1
 
