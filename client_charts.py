@@ -20,7 +20,7 @@ client = OpenAI(
 
 MODEL_ID = "qwen/qwq-32b"
 BACKEND_URL = "http://localhost:8000/execute"
-PROMPT_FILE = "prompt.json"
+PROMPT_FILE = "prompt_chart.json"
 CSV_FOLDER = "input_csv"
 MAX_ROWS_PER_CSV = 5000
 

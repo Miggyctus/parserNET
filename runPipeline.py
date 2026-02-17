@@ -1,7 +1,7 @@
 import requests
 import json
 from client_charts import main as run_charts
-from client_report import generate_report_text
+from client_report import main as generate_report_text
 
 BACKEND_URL = "http://localhost:8000/execute"
 
