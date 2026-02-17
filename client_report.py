@@ -12,7 +12,7 @@ from contextlib import contextmanager
 # =========================
 
 BASE_URL = "http://localhost:1234/v1"
-MODEL_ID = "glm-4.7-flash-claude-opus-4.5-high-reasoning-distill"  # Modelo narrativo
+MODEL_ID = "glm-4.7-flash-claude-opus-4.5-high-reasoning-distill"
 PROMPT_FILE = "prompt_report.json"
 CHART_JSON_PATH = "output/json/llm_output.json"
 OUTPUT_JSON = "output/json/llm_report.json"
@@ -57,9 +57,7 @@ def load_model():
         raise RuntimeError(f"Model failed to load: {data}")
 
     MODEL_INSTANCE_ID = data.get("instance_id")
-
-    print("✅ Report model loaded")
-    print("Instance ID:", MODEL_INSTANCE_ID)
+    print("Report model loaded")
 
 
 def unload_model():
@@ -68,18 +66,14 @@ def unload_model():
     if not MODEL_INSTANCE_ID:
         return
 
-    response = requests.post(
+    requests.post(
         "http://localhost:1234/api/v1/models/unload",
         json={"instance_id": MODEL_INSTANCE_ID},
         timeout=60
     )
 
-    if response.status_code == 200:
-        print("🧹 Report model unloaded")
-    else:
-        print("⚠️ Unload failed:", response.text)
-
     MODEL_INSTANCE_ID = None
+    print("Report model unloaded")
 
 
 @contextmanager
@@ -92,7 +86,7 @@ def model_session():
 
 
 # =========================
-# Utils JSON seguros
+# Utils
 # =========================
 
 def extract_json(text: str) -> str:
@@ -150,10 +144,10 @@ def analyze_csv_with_pandas():
 
     df_all = pd.concat(dfs, ignore_index=True)
 
-    analysis = {}
-
-    analysis["total_events"] = int(len(df_all))
-    analysis["columns"] = list(df_all.columns)
+    analysis = {
+        "total_events": int(len(df_all)),
+        "columns": list(df_all.columns)
+    }
 
     # Top categorical
     for col in df_all.columns:
@@ -199,10 +193,7 @@ def ask_llm(system_prompt: str, chart_data: dict, csv_analysis: dict):
     completion = client.chat.completions.create(
         model=MODEL_ID,
         messages=[
-            {
-                "role": "system",
-                "content": system_prompt
-            },
+            {"role": "system", "content": system_prompt},
             {
                 "role": "user",
                 "content": f"""
@@ -211,7 +202,7 @@ You are given:
 1) Chart data generated from telemetry.
 2) Statistical analysis derived directly from CSV files.
 
-You must correlate both.
+Correlate both sources.
 
 === CHART DATA ===
 {json.dumps(chart_data, indent=2)}
@@ -222,48 +213,39 @@ You must correlate both.
             }
         ],
         temperature=0.7,
-        max_tokens=6000
+        top_p=1.0,
+        max_tokens=20000
     )
 
     return completion.choices[0].message.content
 
 
 # =========================
-# MAIN
+# PUBLIC FUNCTION FOR PIPELINE
 # =========================
 
-def main():
-
-    print("🧠 Starting report generation...")
+def generate_report():
 
     system_prompt = load_system_prompt()
     chart_data = load_chart_json()
     csv_analysis = analyze_csv_with_pandas()
 
     with model_session():
+        raw = ask_llm(system_prompt, chart_data, csv_analysis)
+        parsed = safe_json_load(raw)
 
-        raw_response = ask_llm(
-            system_prompt,
-            chart_data,
-            csv_analysis
-        )
+        os.makedirs("output/json", exist_ok=True)
 
-        print("\n===== REPORT RAW RESPONSE =====\n")
-        print(raw_response)
+        with open(OUTPUT_JSON, "w", encoding="utf-8") as f:
+            json.dump(parsed, f, indent=2)
 
-        try:
-            parsed = safe_json_load(raw_response)
+        return parsed
 
-            os.makedirs("output/json", exist_ok=True)
 
-            with open(OUTPUT_JSON, "w", encoding="utf-8") as f:
-                json.dump(parsed, f, indent=2)
-
-            print("\n✅ Report JSON saved at:", OUTPUT_JSON)
-
-        except Exception as e:
-            print("\n❌ Invalid JSON returned by model")
-            print("Error:", e)
+def main():
+    print("Starting report generation...")
+    generate_report()
+    print("Report completed.")
 
 
 if __name__ == "__main__":
