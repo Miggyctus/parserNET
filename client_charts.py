@@ -167,6 +167,13 @@ Analyze this data strictly according to your instructions.
 {telemetry_json}
 === END TELEMETRY ===
 
+Choose the most appropriate chart type based on the nature of the data.
+- Use line for temporal trends
+- Use pie only when categories are small (<=5)
+- Use horizontal_bar for long categorical labels
+- Use stacked_bar for multi-dimensional breakdown
+- Use boxplot for numeric distribution
+
 Generate ONLY the required JSON chart definitions.
 Do NOT generate the final report yet.
 """
