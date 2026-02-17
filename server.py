@@ -1,6 +1,8 @@
 from fastapi import FastAPI, HTTPException
 import subprocess
 import json
+import sys
+import os
 
 app = FastAPI()
 
@@ -8,6 +10,10 @@ ACTIONS = {
     "generate_chart": "actions/generate_chart.py",
     "generate_word": "actions/generate_word.py"
 }
+
+# 🔥 Usar el mismo intérprete que corre FastAPI
+PYTHON_EXEC = sys.executable
+
 
 @app.post("/execute")
 def execute(payload: dict):
@@ -17,9 +23,9 @@ def execute(payload: dict):
         raise HTTPException(status_code=400, detail="Action not allowed")
 
     try:
-        # 1️⃣ Ejecutar acción principal
+        # 1️⃣ Ejecutar acción principal usando el python correcto
         process = subprocess.run(
-            ["python", ACTIONS[action]],
+            [PYTHON_EXEC, ACTIONS[action]],
             capture_output=True,
             text=True,
             check=True
@@ -32,7 +38,7 @@ def execute(payload: dict):
 
         if action == "generate_chart":
             process_word = subprocess.run(
-                ["python", ACTIONS["generate_word"], json.dumps(payload)],
+                [PYTHON_EXEC, ACTIONS["generate_word"], json.dumps(payload)],
                 capture_output=True,
                 text=True,
                 check=True
