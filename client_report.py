@@ -3,14 +3,16 @@ import os
 import httpx
 import re
 import pandas as pd
+import requests
 from openai import OpenAI
+from contextlib import contextmanager
 
 # =========================
 # Configuración
 # =========================
 
 BASE_URL = "http://localhost:1234/v1"
-MODEL_ID = "glm-4.7-flash-claude-opus-4.5-high-reasoning-distill"  # Cambialo por tu modelo narrativo
+MODEL_ID = "glm-4.7-flash-claude-opus-4.5-high-reasoning-distill"  # Modelo narrativo
 PROMPT_FILE = "prompt_report.json"
 CHART_JSON_PATH = "output/json/llm_output.json"
 OUTPUT_JSON = "output/json/llm_report.json"
@@ -21,6 +23,73 @@ client = OpenAI(
     api_key="lm-studio",
     http_client=httpx.Client(timeout=900.0)
 )
+
+# =========================
+# Model Load / Unload
+# =========================
+
+MODEL_INSTANCE_ID = None
+
+
+def load_model():
+    global MODEL_INSTANCE_ID
+
+    payload = {
+        "model": MODEL_ID,
+        "context_length": 20000,
+        "eval_batch_size": 256,
+        "offload_kv_cache_to_gpu": True,
+        "echo_load_config": True
+    }
+
+    response = requests.post(
+        "http://localhost:1234/api/v1/models/load",
+        json=payload,
+        timeout=120
+    )
+
+    if response.status_code != 200:
+        raise RuntimeError(f"Failed to load model: {response.text}")
+
+    data = response.json()
+
+    if data.get("status") != "loaded":
+        raise RuntimeError(f"Model failed to load: {data}")
+
+    MODEL_INSTANCE_ID = data.get("instance_id")
+
+    print("✅ Report model loaded")
+    print("Instance ID:", MODEL_INSTANCE_ID)
+
+
+def unload_model():
+    global MODEL_INSTANCE_ID
+
+    if not MODEL_INSTANCE_ID:
+        return
+
+    response = requests.post(
+        "http://localhost:1234/api/v1/models/unload",
+        json={"instance_id": MODEL_INSTANCE_ID},
+        timeout=60
+    )
+
+    if response.status_code == 200:
+        print("🧹 Report model unloaded")
+    else:
+        print("⚠️ Unload failed:", response.text)
+
+    MODEL_INSTANCE_ID = None
+
+
+@contextmanager
+def model_session():
+    load_model()
+    try:
+        yield
+    finally:
+        unload_model()
+
 
 # =========================
 # Utils JSON seguros
@@ -58,7 +127,7 @@ def load_chart_json():
 
 
 # =========================
-# CSV ANALYSIS CON PANDAS
+# CSV ANALYSIS
 # =========================
 
 def analyze_csv_with_pandas():
@@ -69,10 +138,8 @@ def analyze_csv_with_pandas():
         if not file.endswith(".csv"):
             continue
 
-        path = os.path.join(CSV_FOLDER, file)
-
         try:
-            df = pd.read_csv(path)
+            df = pd.read_csv(os.path.join(CSV_FOLDER, file))
             df["source_file"] = file
             dfs.append(df)
         except Exception:
@@ -88,20 +155,14 @@ def analyze_csv_with_pandas():
     analysis["total_events"] = int(len(df_all))
     analysis["columns"] = list(df_all.columns)
 
-    # =========================
-    # Top categorical distributions
-    # =========================
-
+    # Top categorical
     for col in df_all.columns:
         if df_all[col].dtype == "object":
             top = df_all[col].value_counts().head(5).to_dict()
             if top:
                 analysis[f"top_{col}"] = top
 
-    # =========================
-    # Numeric statistics
-    # =========================
-
+    # Numeric stats
     numeric_cols = df_all.select_dtypes(include=["int64", "float64"]).columns
 
     for col in numeric_cols:
@@ -111,10 +172,7 @@ def analyze_csv_with_pandas():
             "min": float(df_all[col].min())
         }
 
-    # =========================
-    # Temporal trend (si existe)
-    # =========================
-
+    # Temporal trend
     for col in df_all.columns:
         if "time" in col.lower() or "date" in col.lower():
             try:
@@ -151,9 +209,9 @@ def ask_llm(system_prompt: str, chart_data: dict, csv_analysis: dict):
 You are given:
 
 1) Chart data generated from telemetry.
-2) Structured statistical analysis derived from original CSV files.
+2) Statistical analysis derived directly from CSV files.
 
-You must correlate both sources.
+You must correlate both.
 
 === CHART DATA ===
 {json.dumps(chart_data, indent=2)}
@@ -182,28 +240,30 @@ def main():
     chart_data = load_chart_json()
     csv_analysis = analyze_csv_with_pandas()
 
-    raw_response = ask_llm(
-        system_prompt,
-        chart_data,
-        csv_analysis
-    )
+    with model_session():
 
-    print("\n===== REPORT RAW RESPONSE =====\n")
-    print(raw_response)
+        raw_response = ask_llm(
+            system_prompt,
+            chart_data,
+            csv_analysis
+        )
 
-    try:
-        parsed = safe_json_load(raw_response)
+        print("\n===== REPORT RAW RESPONSE =====\n")
+        print(raw_response)
 
-        os.makedirs("output/json", exist_ok=True)
+        try:
+            parsed = safe_json_load(raw_response)
 
-        with open(OUTPUT_JSON, "w", encoding="utf-8") as f:
-            json.dump(parsed, f, indent=2)
+            os.makedirs("output/json", exist_ok=True)
 
-        print("\n✅ Report JSON saved at:", OUTPUT_JSON)
+            with open(OUTPUT_JSON, "w", encoding="utf-8") as f:
+                json.dump(parsed, f, indent=2)
 
-    except Exception as e:
-        print("\n❌ Invalid JSON returned by model")
-        print("Error:", e)
+            print("\n✅ Report JSON saved at:", OUTPUT_JSON)
+
+        except Exception as e:
+            print("\n❌ Invalid JSON returned by model")
+            print("Error:", e)
 
 
 if __name__ == "__main__":
