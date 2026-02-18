@@ -71,83 +71,131 @@ def render_chart(chart_id, chart):
 
     df = pd.DataFrame(chart.get("data", []))
 
-    if df.empty:
-        return None
-
-    if "event_count" not in df.columns:
+    if df.empty or "event_count" not in df.columns:
         return None
 
     dimension_col = get_dimension_column(df)
-
     if not dimension_col:
         return None
 
     chart_type = chart.get("chart_type", "bar").lower()
-
     if chart_type not in SUPPORTED_CHARTS:
         chart_type = "bar"
 
-    # Ordenar si es categórico
+    # Orden descendente
     try:
         df = df.sort_values("event_count", ascending=False)
     except Exception:
         pass
 
-    plt.figure(figsize=(10, 6))
+    # =========================
+    # 🎨 ENTERPRISE DARK THEME
+    # =========================
+    plt.style.use("dark_background")
+
+    fig, ax = plt.subplots(figsize=(14, 8))
+
+    fig.patch.set_facecolor("#0B1220")     # Fondo general
+    ax.set_facecolor("#111827")            # Panel
+
+    # Quitar bordes feos
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+    # Grid sutil
+    ax.grid(True, color="#1F2937", linestyle="--", linewidth=0.5, alpha=0.6)
+
+    # Paleta SOC
+    palette = [
+        "#3B82F6",  # azul
+        "#22D3EE",  # cyan
+        "#A78BFA",  # violeta
+        "#F97316",  # naranja
+        "#22C55E",  # verde
+        "#EF4444"   # rojo
+    ]
+
+    colors = palette * (len(df) // len(palette) + 1)
 
     try:
 
         if chart_type == "bar":
-            plt.bar(df[dimension_col], df["event_count"])
+            ax.bar(df[dimension_col], df["event_count"], color=colors[:len(df)])
 
         elif chart_type == "horizontal_bar":
-            plt.barh(df[dimension_col], df["event_count"])
+            ax.barh(df[dimension_col], df["event_count"], color=colors[:len(df)])
 
         elif chart_type == "pie":
-            # Evitar pie con demasiadas categorías
             if len(df) <= 6:
-                plt.pie(
+                ax.pie(
                     df["event_count"],
                     labels=df[dimension_col],
-                    autopct="%1.1f%%"
+                    autopct="%1.1f%%",
+                    colors=colors[:len(df)],
+                    textprops={"color": "white"}
                 )
             else:
-                # fallback seguro
-                plt.bar(df[dimension_col], df["event_count"])
+                ax.bar(df[dimension_col], df["event_count"], color=colors[:len(df)])
 
         elif chart_type == "line":
-            plt.plot(
+            ax.plot(
                 df[dimension_col],
                 df["event_count"],
-                marker="o"
+                marker="o",
+                linewidth=2.5,
+                color="#22D3EE"
+            )
+            ax.fill_between(
+                df[dimension_col],
+                df["event_count"],
+                alpha=0.2,
+                color="#22D3EE"
             )
 
         elif chart_type == "area":
-            plt.fill_between(
+            ax.fill_between(
                 df[dimension_col],
-                df["event_count"]
+                df["event_count"],
+                color="#3B82F6",
+                alpha=0.4
             )
 
         elif chart_type == "stacked_bar":
-            pivot = df.pivot_table(
-                index=dimension_col,
-                values="event_count",
-                aggfunc="sum"
+            df.plot(
+                kind="bar",
+                stacked=True,
+                ax=ax,
+                color=colors[:len(df.columns)]
             )
-            pivot.plot(kind="bar", stacked=True)
 
         elif chart_type == "boxplot":
-            plt.boxplot(df["event_count"])
+            ax.boxplot(
+                df["event_count"],
+                patch_artist=True,
+                boxprops=dict(facecolor="#3B82F6")
+            )
 
         else:
-            plt.bar(df[dimension_col], df["event_count"])
+            ax.bar(df[dimension_col], df["event_count"], color=colors[:len(df)])
 
-        plt.title(chart_id.replace("_", " ").title())
-        plt.xticks(rotation=45, ha="right")
+        # =========================
+        # 🏷 Title & Labels
+        # =========================
+        ax.set_title(
+            chart_id.replace("_", " ").title(),
+            fontsize=16,
+            color="white",
+            pad=20,
+            weight="bold"
+        )
+
+        ax.tick_params(axis="x", colors="white", rotation=45)
+        ax.tick_params(axis="y", colors="white")
+
         plt.tight_layout()
 
         filename = os.path.join(OUTPUT_DIR, f"{chart_id}.png")
-        plt.savefig(filename)
+        plt.savefig(filename, dpi=300, facecolor=fig.get_facecolor())
         plt.close()
 
         return filename
