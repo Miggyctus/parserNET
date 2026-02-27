@@ -182,8 +182,8 @@ Structured Data:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_content}
         ],
-        temperature=0.7,
-        top_p=1.0,
+        temperature=0.6,
+        top_p=0.9,
         max_tokens=20000
     )
 
