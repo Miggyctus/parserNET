@@ -144,8 +144,10 @@ Format:
     completion = client.chat.completions.create(
         model=MODEL_ID,
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.3,
-        max_tokens=6000
+        temperature=0.5,
+        top_p=1.0,
+        max_tokens=15000,
+        n=1
     )
 
     return completion.choices[0].message.content

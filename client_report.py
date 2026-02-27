@@ -182,8 +182,9 @@ Structured Data:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_content}
         ],
-        temperature=0.4,
-        max_tokens=8000
+        temperature=0.7,
+        top_p=1.0,
+        max_tokens=20000
     )
 
     return completion.choices[0].message.content
