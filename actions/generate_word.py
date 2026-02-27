@@ -3,7 +3,8 @@ import json
 import re
 from docx import Document
 from docx.shared import Inches
-from datetime import datetime
+from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.shared import Pt
 
 REPORT_TEXT_PATH = "output/reports/llm_report.txt"
 OUTPUT_DIR = "output/reports"
@@ -17,52 +18,28 @@ doc = Document()
 
 
 # =========================
-# Markdown Parsing Helpers
+# Helpers
 # =========================
 
-def add_heading_from_markdown(line):
-    level = line.count("#")
-    text = line.replace("#", "").strip()
-    doc.add_heading(text, level=min(level, 3))
+def insert_chart(chart_id):
+    chart_path = os.path.join(CHARTS_DIR, f"{chart_id}.png")
+    if os.path.exists(chart_path):
+        doc.add_picture(chart_path, width=Inches(6))
+        doc.add_paragraph(f"Figura: {chart_id.replace('_', ' ').title()}")
+        return True
+    return False
 
 
-def add_table_from_markdown(table_lines):
-    rows = []
-    for line in table_lines:
-        if not line.strip():
-            continue
-        if line.strip().startswith("|") and not "---" in line:
-            parts = [cell.strip() for cell in line.strip("|").split("|")]
-            rows.append(parts)
-
-    if not rows:
-        return
-
-    table = doc.add_table(rows=len(rows), cols=len(rows[0]))
-    table.style = "Table Grid"
-
-    for row_idx, row in enumerate(rows):
-        for col_idx, cell in enumerate(row):
-            table.rows[row_idx].cells[col_idx].text = cell
+def is_section_title(line):
+    return line.isupper() and len(line) > 3
 
 
-def add_paragraph_with_bold(text):
-    paragraph = doc.add_paragraph()
-
-    # Divide texto en segmentos normales y bold
-    parts = re.split(r"(\*\*.*?\*\*)", text)
-
-    for part in parts:
-        if part.startswith("**") and part.endswith("**"):
-            clean_text = part[2:-2]  # quitar **
-            run = paragraph.add_run(clean_text)
-            run.bold = True
-        else:
-            paragraph.add_run(part)
+def is_numbered_section(line):
+    return re.match(r"^\d+\.\s", line)
 
 
 # =========================
-# Insert Report Content
+# Parse Report
 # =========================
 
 if os.path.exists(REPORT_TEXT_PATH):
@@ -70,57 +47,50 @@ if os.path.exists(REPORT_TEXT_PATH):
     with open(REPORT_TEXT_PATH, "r", encoding="utf-8") as f:
         lines = f.readlines()
 
-    i = 0
-    while i < len(lines):
-        line = lines[i].strip()
+    for raw_line in lines:
 
-        # Headings
-        if line.startswith("#"):
-            add_heading_from_markdown(line)
-            i += 1
+        line = raw_line.strip()
+
+        if not line:
             continue
 
-        # Table detection
-        if line.startswith("|"):
-            table_block = []
-            while i < len(lines) and lines[i].strip().startswith("|"):
-                table_block.append(lines[i])
-                i += 1
-            add_table_from_markdown(table_block)
+        # Detect top banner lines
+        if line.startswith("===="):
+            p = doc.add_paragraph(line)
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
             continue
 
-        # Horizontal rule
-        if line.startswith("---"):
-            i += 1
+        # Detect uppercase section headers
+        if is_section_title(line):
+            doc.add_heading(line, level=1)
             continue
 
-        # Normal paragraph (with bold support)
-        if line:
-            add_paragraph_with_bold(line)
+        # Detect numbered index sections
+        if is_numbered_section(line):
+            doc.add_heading(line, level=2)
+            continue
 
-        i += 1
+        # Detect placeholder
+        placeholder_match = re.match(r"\{\{CHART:\s*([a-z0-9_]+)\s*\}\}", line)
+        if placeholder_match:
+            chart_id = placeholder_match.group(1)
+            insert_chart(chart_id)
+            continue
+
+        # Ignore dashed separators
+        if line.startswith("----"):
+            continue
+
+        # Normal paragraph
+        doc.add_paragraph(line)
 
 else:
     doc.add_paragraph("Report text not found.")
 
 
 # =========================
-# Insert Charts
+# Save Document
 # =========================
-
-if os.path.exists(CHARTS_DIR):
-    chart_files = [f for f in os.listdir(CHARTS_DIR) if f.endswith(".png")]
-
-    if chart_files:
-        doc.add_page_break()
-        doc.add_heading("Anexos – Evidencia Gráfica", level=1)
-
-        for file in sorted(chart_files):
-            chart_path = os.path.join(CHARTS_DIR, file)
-            doc.add_picture(chart_path, width=Inches(6))
-            doc.add_paragraph(file.replace(".png", "").replace("_", " "))
-            doc.add_page_break()
-
 
 doc.save(filename)
 

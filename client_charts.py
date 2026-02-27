@@ -1,35 +1,34 @@
-import json
-import requests
-from openai import OpenAI
 import os
-import csv
-import httpx
+import json
 import re
+import requests
+import httpx
+from openai import OpenAI
 from contextlib import contextmanager
 
 # =========================
-# LM Studio client
+# Configuración
 # =========================
+
 BASE_URL = "http://localhost:1234/v1"
+MODEL_ID = "qwen/qwq-32b"
+BACKEND_URL = "http://localhost:8000/execute"
+
+REPORT_PATH = "output/reports/llm_report.txt"
+SUMMARY_PATH = "output/json/csv_summary.json"
+OUTPUT_JSON = "output/json/llm_charts.json"
 
 client = OpenAI(
     base_url=BASE_URL,
     api_key="lm-studio",
-    http_client=httpx.Client(timeout=99999.0)
+    http_client=httpx.Client(timeout=600.0)
 )
 
-MODEL_ID = "qwen/qwq-32b"
-BACKEND_URL = "http://localhost:8000/execute"
-PROMPT_FILE = "prompt_chart.json"
-CSV_FOLDER = "input_csv"
-MAX_ROWS_PER_CSV = 5000
-
-
 # =========================
-# Model Load/Unload (CORRECT ENDPOINT)
+# Model Load / Unload
 # =========================
 
-MODEL_INSTANCE_ID = None  # guardamos el instance_id real
+MODEL_INSTANCE_ID = None
 
 
 def load_model():
@@ -50,19 +49,10 @@ def load_model():
         timeout=120
     )
 
-    if response.status_code != 200:
-        raise RuntimeError(f"Failed to load model: {response.text}")
-
     data = response.json()
-
-    if data.get("status") != "loaded":
-        raise RuntimeError(f"Model failed to load: {data}")
-
     MODEL_INSTANCE_ID = data.get("instance_id")
 
-    print("✅ Model loaded")
-    print("Instance ID:", MODEL_INSTANCE_ID)
-    print("Load config:", data.get("load_config"))
+    print("Charts model loaded")
 
 
 def unload_model():
@@ -71,18 +61,15 @@ def unload_model():
     if not MODEL_INSTANCE_ID:
         return
 
-    response = requests.post(
+    requests.post(
         "http://localhost:1234/api/v1/models/unload",
         json={"instance_id": MODEL_INSTANCE_ID},
         timeout=60
     )
 
-    if response.status_code == 200:
-        print("🧹 Model unloaded")
-    else:
-        print("⚠️ Unload failed:", response.text)
-
     MODEL_INSTANCE_ID = None
+    print("Charts model unloaded")
+
 
 @contextmanager
 def model_session():
@@ -92,163 +79,124 @@ def model_session():
     finally:
         unload_model()
 
+
 # =========================
-# Utils (ORIGINAL)
+# Utils
 # =========================
 
-def safe_json_load(text: str):
-    cleaned = extract_json(text)
-    cleaned = cleaned.replace(")", "}")
-    cleaned = re.sub(r",\s*}", "}", cleaned)
-    cleaned = re.sub(r",\s*]", "]", cleaned)
-    return json.loads(cleaned)
+def extract_chart_placeholders(report_text):
+    pattern = r"\{\{CHART:\s*([a-z0-9_]+)\s*\}\}"
+    return re.findall(pattern, report_text)
 
 
-def extract_json(text: str) -> str:
-    fenced_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
-    if fenced_match:
-        return fenced_match.group(1)
+def load_report_text():
+    if not os.path.exists(REPORT_PATH):
+        raise RuntimeError("Report file not found")
 
-    brace_match = re.search(r"(\{.*\})", text, re.DOTALL)
-    if brace_match:
-        return brace_match.group(1)
-
-    return text.strip()
+    with open(REPORT_PATH, "r", encoding="utf-8") as f:
+        return f.read()
 
 
-def load_system_prompt():
-    with open(PROMPT_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)["system_prompt"]
+def load_summary():
+    if not os.path.exists(SUMMARY_PATH):
+        raise RuntimeError("CSV summary not found")
 
-
-def sanitize_text(text: str) -> str:
-    return (
-        text.replace("─", "-")
-            .replace("–", "-")
-            .replace("—", "-")
-    )
-
-
-def load_all_csv(folder_path: str) -> dict:
-    telemetry = {}
-
-    for file in os.listdir(folder_path):
-        if not file.lower().endswith(".csv"):
-            continue
-
-        file_path = os.path.join(folder_path, file)
-        rows = []
-
-        with open(file_path, newline="", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            for i, row in enumerate(reader):
-                if i >= MAX_ROWS_PER_CSV:
-                    break
-                rows.append(row)
-
-        telemetry[file] = rows
-
-    return telemetry
+    with open(SUMMARY_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 
 # =========================
-# LLM Call (ORIGINAL)
+# LLM CALL
 # =========================
 
-def ask_llm(system_prompt: str, telemetry: dict) -> str:
-    telemetry_json = json.dumps(telemetry, indent=2)
+def ask_llm(placeholders, summary):
 
-    user_input = f"""
-The following section contains structured security telemetry collected from multiple vendors.
+    prompt = f"""
+You are a visualization engine.
 
-Analyze this data strictly according to your instructions.
+You are given:
 
-=== BEGIN TELEMETRY ===
-{telemetry_json}
-=== END TELEMETRY ===
+1) A list of chart identifiers requested in a report:
+{placeholders}
 
-Choose the most appropriate chart type based on the nature of the data.
-- Use line for temporal trends
-- Use pie only when categories are small (<=5)
-- Use horizontal_bar for long categorical labels
-- Use stacked_bar for multi-dimensional breakdown
-- Use boxplot for numeric distribution
+2) Structured statistical data extracted from CSV:
+{json.dumps(summary, separators=(',', ':'))}
 
-Do NOT generate the final report yet.
+Instructions:
+- Generate ONLY charts requested in the placeholder list.
+- The chart identifier must match EXACTLY the placeholder name.
+- Do NOT invent additional charts.
+- Use only data present in summary.
+- Maximum 10 data points per chart.
+- Output VALID JSON only.
+
+Format:
+{{
+  "charts": {{
+      "placeholder_name": {{
+          "chart_type": "bar | line | pie | stacked_bar | horizontal_bar",
+          "data": [...]
+      }}
+  }}
+}}
 """
 
     completion = client.chat.completions.create(
         model=MODEL_ID,
-        messages=[
-            {
-                "role": "system",
-                "content": sanitize_text(system_prompt)
-            },
-            {
-                "role": "user",
-                "content": user_input
-            }
-        ],
-        temperature=0.5,
-        top_p=1.0,
-        max_tokens=25000,
-        n=1
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.3,
+        max_tokens=6000
     )
 
     return completion.choices[0].message.content
 
 
+def safe_json_load(text):
+    match = re.search(r"(\{.*\})", text, re.DOTALL)
+    if not match:
+        raise ValueError("No valid JSON found")
+
+    return json.loads(match.group(1))
+
+
 # =========================
-# Main (Misma lógica + model_session)
+# MAIN
 # =========================
 
 def main():
-    system_prompt = load_system_prompt()
-    telemetry = load_all_csv(CSV_FOLDER)
 
-    if not telemetry:
-        print("❌ No CSV files found in input folder")
+    report_text = load_report_text()
+    summary = load_summary()
+
+    placeholders = extract_chart_placeholders(report_text)
+
+    if not placeholders:
+        print("No chart placeholders found.")
         return
 
-    # 🔥 SOLO ENVOLVEMOS LA LLAMADA AL LLM
+    print("Detected placeholders:", placeholders)
+
     with model_session():
 
-        response = ask_llm(system_prompt, telemetry)
+        raw = ask_llm(placeholders, summary)
 
-        print("\n===== LLM RAW RESPONSE =====\n")
-        print(response)
+        parsed = safe_json_load(raw)
 
-        try:
-            parsed = safe_json_load(response)
+        os.makedirs("output/json", exist_ok=True)
 
-            os.makedirs("output/json", exist_ok=True)
-            json_path = "output/json/llm_output.json"
+        with open(OUTPUT_JSON, "w", encoding="utf-8") as f:
+            json.dump(parsed, f, indent=2)
 
-            with open(json_path, "w", encoding="utf-8") as f:
-                json.dump(parsed, f, indent=2)
+        print("Charts JSON saved")
 
-            print("JSON guardado en:", json_path)
-            print("\n✅ Valid JSON received")
-
-            try:
-                backend_response = requests.post(
-                    BACKEND_URL,
-                    json={
-                        "action": "generate_chart",
-                        "json_path": json_path
-                    }
-                )
-
-                print("\n📡 Backend status:", backend_response.status_code)
-                print("📨 Backend response:", backend_response.text)
-
-            except Exception as e:
-                print("\n❌ Error communicating with backend:")
-                print(e)
-
-        except Exception as e:
-            print("\n❌ Response is not valid JSON")
-            print("Error:", e)
+        # Llamar backend para generar imágenes
+        requests.post(
+            BACKEND_URL,
+            json={
+                "action": "generate_chart",
+                "json_path": OUTPUT_JSON
+            }
+        )
 
 
 if __name__ == "__main__":

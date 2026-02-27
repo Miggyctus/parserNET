@@ -105,7 +105,7 @@ def render_chart(chart_id, chart):
     # Grid sutil
     ax.grid(True, color="#1F2937", linestyle="--", linewidth=0.5, alpha=0.6)
 
-    # Paleta SOC
+    # Paleta
     palette = [
         "#3B82F6",  # azul
         "#22D3EE",  # cyan

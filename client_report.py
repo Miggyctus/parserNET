@@ -1,9 +1,8 @@
-import json
 import os
-import httpx
-import re
+import json
 import pandas as pd
 import requests
+import httpx
 from openai import OpenAI
 from contextlib import contextmanager
 
@@ -13,10 +12,12 @@ from contextlib import contextmanager
 
 BASE_URL = "http://localhost:1234/v1"
 MODEL_ID = "glm-4.7-flash-claude-opus-4.5-high-reasoning-distill"
+
 PROMPT_FILE = "prompt_report.json"
-CHART_JSON_PATH = "output/json/llm_output.json"
-OUTPUT_JSON = "output/json/llm_report.json"
 CSV_FOLDER = "input_csv"
+
+REPORT_PATH = "output/reports/llm_report.txt"
+SUMMARY_PATH = "output/json/csv_summary.json"
 
 client = OpenAI(
     base_url=BASE_URL,
@@ -48,15 +49,9 @@ def load_model():
         timeout=120
     )
 
-    if response.status_code != 200:
-        raise RuntimeError(f"Failed to load model: {response.text}")
-
     data = response.json()
-
-    if data.get("status") != "loaded":
-        raise RuntimeError(f"Model failed to load: {data}")
-
     MODEL_INSTANCE_ID = data.get("instance_id")
+
     print("Report model loaded")
 
 
@@ -86,87 +81,50 @@ def model_session():
 
 
 # =========================
-# Utils
+# CSV SUMMARY BUILDER
 # =========================
 
-def extract_json(text: str) -> str:
-    fenced = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
-    if fenced:
-        return fenced.group(1)
-
-    brace = re.search(r"(\{.*\})", text, re.DOTALL)
-    if brace:
-        return brace.group(1)
-
-    return text.strip()
-
-
-def safe_json_load(text: str):
-    cleaned = extract_json(text)
-    cleaned = re.sub(r",\s*}", "}", cleaned)
-    cleaned = re.sub(r",\s*]", "]", cleaned)
-    return json.loads(cleaned)
-
-
-def load_system_prompt():
-    with open(PROMPT_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)["system_prompt"]
-
-
-def load_chart_json():
-    if not os.path.exists(CHART_JSON_PATH):
-        return {}
-    with open(CHART_JSON_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-# =========================
-# CSV ANALYSIS
-# =========================
-
-def analyze_csv_with_pandas():
+def build_csv_summary():
 
     dfs = []
 
     for file in os.listdir(CSV_FOLDER):
-        if not file.endswith(".csv"):
-            continue
-
-        try:
-            df = pd.read_csv(os.path.join(CSV_FOLDER, file))
-            df["source_file"] = file
-            dfs.append(df)
-        except Exception:
-            continue
+        if file.endswith(".csv"):
+            try:
+                df = pd.read_csv(os.path.join(CSV_FOLDER, file))
+                df["source_file"] = file
+                dfs.append(df)
+            except Exception:
+                continue
 
     if not dfs:
         return {}
 
     df_all = pd.concat(dfs, ignore_index=True)
 
-    analysis = {
+    summary = {
         "total_events": int(len(df_all)),
         "columns": list(df_all.columns)
     }
 
-    # Top categorical
+    # Top categorical distributions
     for col in df_all.columns:
         if df_all[col].dtype == "object":
-            top = df_all[col].value_counts().head(5).to_dict()
+            top = df_all[col].value_counts().head(10).to_dict()
             if top:
-                analysis[f"top_{col}"] = top
+                summary[f"{col}_distribution"] = top
 
-    # Numeric stats
+    # Numeric statistics
     numeric_cols = df_all.select_dtypes(include=["int64", "float64"]).columns
 
     for col in numeric_cols:
-        analysis[f"stats_{col}"] = {
+        summary[f"{col}_stats"] = {
             "mean": float(df_all[col].mean()),
             "max": float(df_all[col].max()),
             "min": float(df_all[col].min())
         }
 
-    # Temporal trend
+    # Temporal trend detection
     for col in df_all.columns:
         if "time" in col.lower() or "date" in col.lower():
             try:
@@ -176,79 +134,90 @@ def analyze_csv_with_pandas():
                     .size()
                     .to_dict()
                 )
-                analysis["daily_trend"] = trend
+                summary["temporal_trend"] = trend
                 break
             except Exception:
                 continue
 
-    return analysis
+    return summary
+
+
+# =========================
+# Prompt Loader
+# =========================
+
+def load_system_prompt():
+    with open(PROMPT_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)["system_prompt"]
 
 
 # =========================
 # LLM CALL
 # =========================
 
-def ask_llm(system_prompt: str, chart_data: dict, csv_analysis: dict):
+def ask_llm(system_prompt, summary):
+
+    user_content = f"""
+You are given structured statistical data extracted from CSV logs.
+
+Generate a complete professional security audit report in Spanish.
+
+IMPORTANT:
+- Whenever a visualization is required, you MUST insert a placeholder in this exact format:
+{{{{CHART: chart_identifier}}}}
+
+Rules for chart_identifier:
+- lowercase only
+- underscores instead of spaces
+- descriptive (e.g. severity_distribution, vendor_distribution, temporal_trend)
+- placeholder must be on its own line
+
+Structured Data:
+{json.dumps(summary, separators=(',', ':'))}
+"""
 
     completion = client.chat.completions.create(
         model=MODEL_ID,
         messages=[
             {"role": "system", "content": system_prompt},
-            {
-                "role": "user",
-                "content": f"""
-You are given:
-
-1) Chart data generated from telemetry.
-2) Statistical analysis derived directly from CSV files.
-
-Correlate both sources.
-
-=== CHART DATA ===
-{json.dumps(chart_data, indent=2)}
-
-=== CSV ANALYSIS ===
-{json.dumps(csv_analysis, indent=2)}
-"""
-            }
+            {"role": "user", "content": user_content}
         ],
-        temperature=0.7,
-        top_p=1.0,
-        max_tokens=20000
+        temperature=0.4,
+        max_tokens=8000
     )
 
     return completion.choices[0].message.content
 
 
 # =========================
-# PUBLIC FUNCTION FOR PIPELINE
+# MAIN PUBLIC FUNCTION
 # =========================
-
-REPORT_TEXT_PATH = "output/reports/llm_report.txt"
 
 def generate_report():
 
+    os.makedirs("output/reports", exist_ok=True)
+    os.makedirs("output/json", exist_ok=True)
+
+    summary = build_csv_summary()
+
+    # Guardar summary para client_charts
+    with open(SUMMARY_PATH, "w", encoding="utf-8") as f:
+        json.dump(summary, f, indent=2)
+
     system_prompt = load_system_prompt()
-    chart_data = load_chart_json()
-    csv_analysis = analyze_csv_with_pandas()
 
     with model_session():
-        raw = ask_llm(system_prompt, chart_data, csv_analysis)
+        report_text = ask_llm(system_prompt, summary)
 
-        if not raw or not raw.strip():
-            raise RuntimeError("LLM returned empty response")
+    with open(REPORT_PATH, "w", encoding="utf-8") as f:
+        f.write(report_text)
 
-        os.makedirs("output/reports", exist_ok=True)
+    print("Report generated successfully")
+    return report_text
 
-        with open(REPORT_TEXT_PATH, "w", encoding="utf-8") as f:
-            f.write(raw)
-
-        return raw
 
 def main():
-    print("Generating audit report...")
     generate_report()
-    print("Report generated successfully.")
 
 
 if __name__ == "__main__":
