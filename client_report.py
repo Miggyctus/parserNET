@@ -1,8 +1,7 @@
-import os
 import json
-import pandas as pd
-import requests
+import os
 import httpx
+import requests
 from openai import OpenAI
 from contextlib import contextmanager
 
@@ -12,12 +11,10 @@ from contextlib import contextmanager
 
 BASE_URL = "http://localhost:1234/v1"
 MODEL_ID = "glm-4.7-flash-claude-opus-4.5-high-reasoning-distill"
-
 PROMPT_FILE = "prompt_report.json"
+CHART_JSON_PATH = "output/json/llm_output.json"
+REPORT_TEXT_PATH = "output/reports/llm_report.txt"
 CSV_FOLDER = "input_csv"
-
-REPORT_PATH = "output/reports/llm_report.txt"
-SUMMARY_PATH = "output/json/csv_summary.json"
 
 client = OpenAI(
     base_url=BASE_URL,
@@ -37,7 +34,7 @@ def load_model():
 
     payload = {
         "model": MODEL_ID,
-        "context_length": 30000,
+        "context_length": 20000,
         "eval_batch_size": 256,
         "offload_kv_cache_to_gpu": True,
         "echo_load_config": True
@@ -49,9 +46,15 @@ def load_model():
         timeout=120
     )
 
-    data = response.json()
-    MODEL_INSTANCE_ID = data.get("instance_id")
+    if response.status_code != 200:
+        raise RuntimeError(f"Failed to load model: {response.text}")
 
+    data = response.json()
+
+    if data.get("status") != "loaded":
+        raise RuntimeError(f"Model failed to load: {data}")
+
+    MODEL_INSTANCE_ID = data.get("instance_id")
     print("Report model loaded")
 
 
@@ -81,69 +84,7 @@ def model_session():
 
 
 # =========================
-# CSV SUMMARY BUILDER
-# =========================
-
-def build_csv_summary():
-
-    dfs = []
-
-    for file in os.listdir(CSV_FOLDER):
-        if file.endswith(".csv"):
-            try:
-                df = pd.read_csv(os.path.join(CSV_FOLDER, file))
-                df["source_file"] = file
-                dfs.append(df)
-            except Exception:
-                continue
-
-    if not dfs:
-        return {}
-
-    df_all = pd.concat(dfs, ignore_index=True)
-
-    summary = {
-        "total_events": int(len(df_all)),
-        "columns": list(df_all.columns)
-    }
-
-    # Top categorical distributions
-    for col in df_all.columns:
-        if df_all[col].dtype == "object":
-            top = df_all[col].value_counts().head(10).to_dict()
-            if top:
-                summary[f"{col}_distribution"] = top
-
-    # Numeric statistics
-    numeric_cols = df_all.select_dtypes(include=["int64", "float64"]).columns
-
-    for col in numeric_cols:
-        summary[f"{col}_stats"] = {
-            "mean": float(df_all[col].mean()),
-            "max": float(df_all[col].max()),
-            "min": float(df_all[col].min())
-        }
-
-    # Temporal trend detection
-    for col in df_all.columns:
-        if "time" in col.lower() or "date" in col.lower():
-            try:
-                df_all[col] = pd.to_datetime(df_all[col], errors="coerce")
-                trend = (
-                    df_all.groupby(df_all[col].dt.date)
-                    .size()
-                    .to_dict()
-                )
-                summary["temporal_trend"] = trend
-                break
-            except Exception:
-                continue
-
-    return summary
-
-
-# =========================
-# Prompt Loader
+# Utils
 # =========================
 
 def load_system_prompt():
@@ -151,39 +92,66 @@ def load_system_prompt():
         return json.load(f)["system_prompt"]
 
 
+def load_chart_json():
+    if not os.path.exists(CHART_JSON_PATH):
+        return {}
+    with open(CHART_JSON_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def load_all_csv(folder_path: str) -> dict:
+    csv_data = {}
+
+    for file in os.listdir(folder_path):
+        if not file.lower().endswith(".csv"):
+            continue
+
+        file_path = os.path.join(folder_path, file)
+
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                content = f.read()
+
+            csv_data[file] = content
+
+        except Exception:
+            continue
+
+    return csv_data
+
+
 # =========================
-# LLM CALL
+# LLM Call
 # =========================
 
-def ask_llm(system_prompt, summary):
-
-    user_content = f"""
-You are given structured statistical data extracted from CSV logs.
-
-Generate a complete professional security audit report in Spanish.
-
-IMPORTANT:
-- Whenever a visualization is required, you MUST insert a placeholder in this exact format:
-{{{{CHART: chart_identifier}}}}
-
-Rules for chart_identifier:
-- lowercase only
-- underscores instead of spaces
-- descriptive (e.g. severity_distribution, vendor_distribution, temporal_trend)
-- placeholder must be on its own line
-
-Structured Data:
-{json.dumps(summary, separators=(',', ':'))}
-"""
+def ask_llm(system_prompt: str, chart_data: dict, csv_data: dict):
 
     completion = client.chat.completions.create(
         model=MODEL_ID,
         messages=[
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_content}
+            {
+                "role": "user",
+                "content": f"""
+You are provided with:
+
+1) Structured chart aggregation data.
+2) Raw CSV telemetry files.
+
+You must analyze the raw CSV data directly.
+
+=== CHART DATA ===
+{json.dumps(chart_data, indent=2)}
+
+=== RAW CSV FILES ===
+{json.dumps(csv_data, indent=2)}
+
+Generate the complete audit report.
+"""
+            }
         ],
         temperature=0.6,
-        top_p=0.9,
+        top_p=1.0,
         max_tokens=20000
     )
 
@@ -191,34 +159,33 @@ Structured Data:
 
 
 # =========================
-# MAIN PUBLIC FUNCTION
+# Public Function
 # =========================
 
 def generate_report():
 
-    os.makedirs("output/reports", exist_ok=True)
-    os.makedirs("output/json", exist_ok=True)
-
-    summary = build_csv_summary()
-
-    # Guardar summary para client_charts
-    with open(SUMMARY_PATH, "w", encoding="utf-8") as f:
-        json.dump(summary, f, indent=2)
-
     system_prompt = load_system_prompt()
+    chart_data = load_chart_json()
+    csv_data = load_all_csv(CSV_FOLDER)
 
     with model_session():
-        report_text = ask_llm(system_prompt, summary)
+        raw = ask_llm(system_prompt, chart_data, csv_data)
 
-    with open(REPORT_PATH, "w", encoding="utf-8") as f:
-        f.write(report_text)
+        if not raw or not raw.strip():
+            raise RuntimeError("LLM returned empty response")
 
-    print("Report generated successfully")
-    return report_text
+        os.makedirs("output/reports", exist_ok=True)
+
+        with open(REPORT_TEXT_PATH, "w", encoding="utf-8") as f:
+            f.write(raw)
+
+        return raw
 
 
 def main():
+    print("Generating audit report...")
     generate_report()
+    print("Report generated successfully.")
 
 
 if __name__ == "__main__":
