@@ -154,8 +154,9 @@ Generate the complete audit report.
         top_p=1.0,
         max_tokens=20000
     )
+    message = completion.choices[0].message
 
-    return completion.choices[0].message.content
+    return message.content
 
 
 # =========================
