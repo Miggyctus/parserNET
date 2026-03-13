@@ -152,7 +152,8 @@ Generate the complete audit report.
         ],
         temperature=0.6,
         top_p=1.0,
-        max_tokens=20000
+        max_tokens=20000,
+        n=1
     )
     message = completion.choices[0].message
 
