@@ -172,11 +172,6 @@ INFORME DE REFERENCIA (solo estructura y estilo)
 {referenceReport}
  
 ════════════════════════════════════════
-CHART AGGREGATION DATA (validación estadística)
-════════════════════════════════════════
-{json.dumps(chart_data, indent=2)}
- 
-════════════════════════════════════════
 TELEMETRÍA RAW CSV (fuente primaria de análisis)
 ════════════════════════════════════════
 {json.dumps(csv_data, indent=2)}
@@ -200,7 +195,7 @@ Genera ahora el informe SOC completo siguiendo el system prompt al pie de la let
 """
             }
         ],
-        temperature=0.3,
+        temperature=0.6,
         top_p=0.95,
         max_tokens=20000,
         n=1
