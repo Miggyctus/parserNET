@@ -196,7 +196,7 @@ Genera ahora el informe SOC completo siguiendo el system prompt al pie de la let
             }
         ],
         temperature=0.6,
-        top_p=0.95,
+        top_p=1.0,
         max_tokens=20000,
         n=1
     )
