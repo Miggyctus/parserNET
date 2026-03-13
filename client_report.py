@@ -119,13 +119,22 @@ def load_all_csv(folder_path: str) -> dict:
 
     return csv_data
 
+def load_reference_report():
+    path = "ejemplo.pdf"
 
+    if not os.path.exists(path):
+        return ""
+    
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read()
+    
 # =========================
 # LLM Call
 # =========================
 
 def ask_llm(system_prompt: str, chart_data: dict, csv_data: dict):
 
+    referenceReport= load_reference_report()
     completion = client.chat.completions.create(
         model=MODEL_ID,
         messages=[
@@ -137,8 +146,12 @@ You are provided with:
 
 1) Structured chart aggregation data.
 2) Raw CSV telemetry files.
-
+3) A reference audit report example.
 You must analyze the raw CSV data directly.
+Use it ONLY as a stylistic and structural reference.
+Do NOT reuse its incidents, conclusions, or content.
+
+{referenceReport}
 
 === CHART DATA ===
 {json.dumps(chart_data, indent=2)}
@@ -146,7 +159,10 @@ You must analyze the raw CSV data directly.
 === RAW CSV FILES ===
 {json.dumps(csv_data, indent=2)}
 
-Generate the complete audit report.
+Generate the full SOC report using the telemetry data.
+
+Follow the writing style, tone, and structure of the reference report,
+but base ALL analysis strictly on the telemetry provided.
 """
             }
         ],
