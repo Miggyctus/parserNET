@@ -4,7 +4,7 @@ import httpx
 import requests
 from openai import OpenAI
 from contextlib import contextmanager
-import fizz
+import fitz
 
 # =========================
 # Configuración
