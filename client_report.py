@@ -148,32 +148,60 @@ def ask_llm(system_prompt: str, chart_data: dict, csv_data: dict):
             {
                 "role": "user",
                 "content": f"""
-You are provided with:
-
-1) Structured chart aggregation data.
-2) Raw CSV telemetry files.
-3) A reference audit report example.
-You must analyze the raw CSV data directly.
-Use it ONLY as a stylistic and structural reference.
-Do NOT reuse its incidents, conclusions, or content.
-
+════════════════════════════════════════
+INSTRUCCIONES DE ANÁLISIS — PRIORIDAD ESTRICTA
+════════════════════════════════════════
+ 
+Tienes acceso a tres fuentes de datos con la siguiente jerarquía de uso:
+ 
+▶ FUENTE PRIMARIA [OBLIGATORIA]: CSV de telemetría raw
+   → Todo análisis, hallazgo, evidencia y conclusión debe derivarse EXCLUSIVAMENTE de estos datos.
+   → Cita campos exactos, valores reales y timestamps del CSV en cada hallazgo.
+ 
+▶ FUENTE SECUNDARIA [CONTEXTUAL]: Chart aggregation data
+   → Úsala para validar volúmenes, distribuciones y tendencias estadísticas.
+   → Si contradice el CSV, prevalece el CSV y debes señalar la discrepancia.
+ 
+▶ FUENTE DE REFERENCIA [ESTILO ÚNICAMENTE]: Informe de auditoría de ejemplo
+   → Úsala SOLO como guía de tono, formato y nivel de detalle esperado.
+   → PROHIBIDO reutilizar sus incidentes, IPs, usuarios, hostnames, fechas o conclusiones.
+ 
+════════════════════════════════════════
+INFORME DE REFERENCIA (solo estructura y estilo)
+════════════════════════════════════════
 {referenceReport}
-
-=== CHART DATA ===
+ 
+════════════════════════════════════════
+CHART AGGREGATION DATA (validación estadística)
+════════════════════════════════════════
 {json.dumps(chart_data, indent=2)}
-
-=== RAW CSV FILES ===
+ 
+════════════════════════════════════════
+TELEMETRÍA RAW CSV (fuente primaria de análisis)
+════════════════════════════════════════
 {json.dumps(csv_data, indent=2)}
-
-Generate the full SOC report using the telemetry data.
-
-Follow the writing style, tone, and structure of the reference report,
-but base ALL analysis strictly on the telemetry provided.
+ 
+════════════════════════════════════════
+CHECKLIST PRE-GENERACIÓN (valida antes de producir el informe)
+════════════════════════════════════════
+Antes de escribir el informe, confirma internamente:
+□ ¿He identificado todos los activos únicos presentes en el CSV?
+□ ¿He detectado los top 10 eventos por frecuencia en el CSV?
+□ ¿He identificado anomalías temporales (picos, horas inusuales)?
+□ ¿Hay evidencia de tráfico egress hacia IPs/dominios externos?
+□ ¿Hay comandos Linux sospechosos, escaladas de privilegio o persistencia?
+□ ¿Tengo al menos 1 hallazgo por cada fuente de telemetría presente?
+□ ¿Cada hallazgo tiene evidencia literal del CSV (campo + valor + timestamp)?
+□ ¿Cada hallazgo tiene MITRE ATT&CK (Táctica + Técnica + ID)?
+□ ¿Cada hallazgo tiene Riesgo Calculado con la escala definida?
+□ ¿Las secciones 8 y 9 están completas (o tienen BRECHA DE VISIBILIDAD documentada)?
+ 
+Genera ahora el informe SOC completo siguiendo el system prompt al pie de la letra.
 """
             }
         ],
-        temperature=0.6,
-        top_p=1.0,
+        temperature=0.3,
+        top_p=0.95,
         max_tokens=20000,
         n=1
     )

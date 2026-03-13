@@ -86,7 +86,10 @@ def model_session():
 
 def extract_chart_placeholders(report_text):
     pattern = r"\{\{CHART:\s*([a-z0-9_]+)\s*\}\}"
-    return re.findall(pattern, report_text)
+    matches = re.findall(pattern, report_text)
+
+    # eliminar duplicados
+    return list(dict.fromkeys(matches))
 
 
 def load_report_text():
@@ -111,54 +114,121 @@ def load_summary():
 
 def ask_llm(placeholders, summary):
 
+    placeholder_list = "\n".join(
+        [f"{i+1}. {p}" for i, p in enumerate(placeholders)]
+    )
+
+    available_keys = list(summary.keys())[:20]
+
     prompt = f"""
-You are a visualization engine.
+TASK: Generate chart JSON for the following placeholders.
 
-You are given:
+════════════════════════════════════════
+REQUESTED CHART PLACEHOLDERS ({len(placeholders)} total)
+════════════════════════════════════════
+{placeholder_list}
 
-1) A list of chart identifiers requested in a report:
-{placeholders}
+════════════════════════════════════════
+AVAILABLE DATA KEYS IN SUMMARY
+════════════════════════════════════════
+{json.dumps(available_keys, separators=(',',':'))}
 
-2) Structured statistical data extracted from CSV:
-{json.dumps(summary, separators=(',', ':'))}
+════════════════════════════════════════
+FULL SUMMARY DATA
+════════════════════════════════════════
+{json.dumps(summary, separators=(',',':'))}
 
-Instructions:
-- Generate ONLY charts requested in the placeholder list.
-- The chart identifier must match EXACTLY the placeholder name.
-- Do NOT invent additional charts.
-- Use only data present in summary.
-- Maximum 10 data points per chart.
-- Output VALID JSON only.
+════════════════════════════════════════
+EXECUTION CHECKLIST
+════════════════════════════════════════
+□ Every placeholder in the list above has an entry in output.charts
+□ chart_identifier matches the placeholder EXACTLY
+□ No extra charts beyond the list above
+□ event_count values are numeric
+□ Max 10 datapoints per chart
+□ No markdown
+□ No explanation
+□ No <think> blocks
 
-Format:
-{{
-  "charts": {{
-      "placeholder_name": {{
-          "chart_type": "bar | line | pie | stacked_bar | horizontal_bar",
-          "data": [...]
-      }}
-  }}
-}}
+OUTPUT (raw JSON only):
 """
 
     completion = client.chat.completions.create(
         model=MODEL_ID,
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.5,
+        temperature=0.0,
         top_p=1.0,
         max_tokens=15000,
         n=1
     )
 
-    return completion.choices[0].message.content
+    raw = completion.choices[0].message.content
+
+    return clean_json_output(raw, placeholders)
 
 
-def safe_json_load(text):
-    match = re.search(r"(\{.*\})", text, re.DOTALL)
-    if not match:
-        raise ValueError("No valid JSON found")
+# =========================
+# Output Cleaning
+# =========================
 
-    return json.loads(match.group(1))
+def clean_json_output(raw: str, placeholders: list):
+
+    # eliminar bloques <think>
+    cleaned = re.sub(r'<think>.*?</think>', '', raw, flags=re.DOTALL)
+
+    # eliminar markdown
+    cleaned = re.sub(r'```(?:json)?\s*', '', cleaned)
+    cleaned = cleaned.replace('```', '')
+
+    # extraer JSON
+    json_match = re.search(r'\{.*\}', cleaned, re.DOTALL)
+
+    if not json_match:
+
+        return {
+            "charts": {
+                p: {
+                    "chart_type": "bar",
+                    "title": p,
+                    "data": [],
+                    "status": "parse_error"
+                }
+                for p in placeholders
+            }
+        }
+
+    candidate = json_match.group(0)
+
+    try:
+
+        parsed = json.loads(candidate)
+
+        for p in placeholders:
+
+            if p not in parsed.get("charts", {}):
+
+                parsed.setdefault("charts", {})[p] = {
+                    "chart_type": "bar",
+                    "title": p,
+                    "data": [],
+                    "status": "missing_in_model_output"
+                }
+
+        return parsed
+
+    except json.JSONDecodeError:
+
+        return {
+            "charts": {
+                p: {
+                    "chart_type": "bar",
+                    "title": p,
+                    "data": [],
+                    "status": "json_decode_error"
+                }
+                for p in placeholders
+            }
+        }
 
 
 # =========================
@@ -180,9 +250,7 @@ def main():
 
     with model_session():
 
-        raw = ask_llm(placeholders, summary)
-
-        parsed = safe_json_load(raw)
+        parsed = ask_llm(placeholders, summary)
 
         os.makedirs("output/json", exist_ok=True)
 
@@ -191,7 +259,7 @@ def main():
 
         print("Charts JSON saved")
 
-        # Llamar backend para generar imágenes
+        # llamar backend para generar imágenes
         requests.post(
             BACKEND_URL,
             json={
