@@ -4,6 +4,7 @@ import httpx
 import requests
 from openai import OpenAI
 from contextlib import contextmanager
+import fizz
 
 # =========================
 # Configuración
@@ -124,9 +125,14 @@ def load_reference_report():
 
     if not os.path.exists(path):
         return ""
-    
-    with open(path, "r", encoding="utf-8") as f:
-        return f.read()
+
+    text = []
+
+    with fitz.open(path) as doc:
+        for page in doc:
+            text.append(page.get_text())
+
+    return "\n".join(text)
     
 # =========================
 # LLM Call
