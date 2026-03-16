@@ -173,6 +173,10 @@ OUTPUT (raw JSON only):
 
 def clean_json_output(raw: str, placeholders: list):
 
+    # =========================
+    # limpiar ruido del modelo
+    # =========================
+
     # eliminar bloques <think>
     cleaned = re.sub(r'<think>.*?</think>', '', raw, flags=re.DOTALL)
 
@@ -180,7 +184,10 @@ def clean_json_output(raw: str, placeholders: list):
     cleaned = re.sub(r'```(?:json)?\s*', '', cleaned)
     cleaned = cleaned.replace('```', '')
 
+    # =========================
     # extraer JSON
+    # =========================
+
     json_match = re.search(r'\{.*\}', cleaned, re.DOTALL)
 
     if not json_match:
@@ -203,19 +210,6 @@ def clean_json_output(raw: str, placeholders: list):
 
         parsed = json.loads(candidate)
 
-        for p in placeholders:
-
-            if p not in parsed.get("charts", {}):
-
-                parsed.setdefault("charts", {})[p] = {
-                    "chart_type": "bar",
-                    "title": p,
-                    "data": [],
-                    "status": "missing_in_model_output"
-                }
-
-        return parsed
-
     except json.JSONDecodeError:
 
         return {
@@ -230,6 +224,75 @@ def clean_json_output(raw: str, placeholders: list):
             }
         }
 
+    # =========================
+    # normalizar charts
+    # =========================
+
+    charts = parsed.get("charts")
+
+    # si charts vino como lista
+    if isinstance(charts, list):
+
+        charts_dict = {}
+
+        for i, chart in enumerate(charts):
+
+            if isinstance(chart, dict):
+
+                # intentar usar chart_identifier si existe
+                identifier = chart.get("chart_identifier")
+
+                if identifier:
+                    charts_dict[identifier] = chart
+                else:
+                    charts_dict[f"chart_{i}"] = chart
+
+        charts = charts_dict
+
+    # si charts no existe o es inválido
+    if not isinstance(charts, dict):
+        charts = {}
+
+    parsed["charts"] = charts
+
+    # =========================
+    # asegurar placeholders
+    # =========================
+
+    for p in placeholders:
+
+        if p not in charts:
+
+            charts[p] = {
+                "chart_type": "bar",
+                "title": p,
+                "data": [],
+                "status": "missing_in_model_output"
+            }
+
+        else:
+
+            chart = charts[p]
+
+            if not isinstance(chart, dict):
+                charts[p] = {
+                    "chart_type": "bar",
+                    "title": p,
+                    "data": [],
+                    "status": "invalid_chart_structure"
+                }
+                continue
+
+            # asegurar campos mínimos
+            chart.setdefault("chart_type", "bar")
+            chart.setdefault("title", p)
+
+            data = chart.get("data")
+
+            if not isinstance(data, list):
+                chart["data"] = []
+
+    return parsed
 
 # =========================
 # MAIN
