@@ -242,7 +242,9 @@ but base ALL analysis strictly on the telemetry provided.
         ],
         temperature=0.6,
         top_p=0.9,
-        max_tokens=30000,
+        max_output_tokens=30000,
+        reasoning="medium",
+        context_length=25000,
         n=1
     )
     message = completion.choices[0].message
