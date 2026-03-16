@@ -148,111 +148,96 @@ def ask_llm(system_prompt: str, chart_data: dict, csv_data: dict):
             {
                 "role": "user",
                 "content": f"""
-════════════════════════════════════════
-PHASE 2 — AVAILABLE TELEMETRY INVENTORY
-════════════════════════════════════════
-Before generating the report, take note of the following:
- 
-RULE: You may only analyze what exists in the columns.
-If a report section requires a field NOT in that list,
-mark it with: ⚠️ VISIBILITY GAP: field '[name]' not present in telemetry.
- 
-════════════════════════════════════════
-PHASE 3 — SOURCE HIERARCHY (strictly enforced)
-════════════════════════════════════════
- 
+You are provided with:
+
 [1] PRIMARY — RAW CSV (analysis, evidence, findings)
-    → Every finding MUST cite: exact field | real value | timestamp
-    → If CSV and charts contradict: CSV prevails — flag the discrepancy
- 
-[2] SECONDARY — CHART AGGREGATION DATA (statistical validation)
-    → Use to confirm volumes and trends, never as a primary source
- 
-[3] REFERENCE — EXAMPLE REPORT (tone and style only)
-    → PROHIBITED to copy: incidents, IPs, users, hostnames, dates, conclusions
- 
-════════════════════════════════════════
-PLACEHOLDER INSERTION RULES (CRITICAL)
-════════════════════════════════════════
- 
+Every finding MUST cite: exact field | real value | timestamp
+If CSV and charts contradict: CSV prevails — flag the discrepancy
+
+[2] REFERENCE — EXAMPLE REPORT (tone and style only)
+PROHIBITED to copy: incidents, IPs, users, hostnames, dates, conclusions
+
 Chart placeholders {{{{CHART: chart_identifier}}}} ARE PART OF THE REPORT.
+
 They must be inserted DURING writing, not appended at the end.
- 
+
 WHEN to insert a placeholder:
-  ✅ Immediately AFTER the paragraph describing a distribution or trend
-  ✅ Whenever you mention: "distribution of...", "top N of...", "trend of...",
-     "volume of...", "comparison between...", "frequency of..."
-  ✅ Once per unique statistical analysis — never repeat the same one
- 
+Immediately AFTER the paragraph describing a distribution or trend
+Whenever you mention: "distribution of...", "top N of...", "trend of...",
+"volume of...", "comparison between...", "frequency of..."
+
+Once per unique statistical analysis — never repeat the same one
+
 HOW to name the chart_identifier:
-  - Lowercase, letters/numbers/underscores only
-  - Must reflect EXACTLY the metric analyzed in that paragraph
-  - Correct examples:
-      top10_events_by_type
-      alert_trend_by_hour
+
+Lowercase, letters/numbers/underscores only
+Must reflect EXACTLY the metric analyzed in that paragraph
+
+- Correct examples:
+
+top10_events_by_type
+alert_trend_by_hour
+
       severity_distribution_endpoints
+
       egress_volume_by_external_destination
+
       top_users_with_auth_failures
+
       suspicious_linux_command_distribution
+
   - Incorrect examples: chart1, graph_1, data_chart
- 
+
 WHERE placeholders go by section:
+
   Section 6  (Statistical Analysis)  → minimum 3 placeholders
+
   Section 7  (Findings)              → 1 per finding that warrants it
+
   Section 8  (Egress)                → minimum 2 placeholders
+
   Section 9  (Linux Activity)        → minimum 1 placeholder (if data exists)
+
   Section 10 (Risk Analysis)         → 1 risk matrix placeholder
- 
+
 MINIMUM TOTAL PLACEHOLDERS IN REPORT: 8
+
 MAXIMUM TOTAL: 20
+
 ABSOLUTE RULE: no chart_identifier may ever be repeated in the entire report
- 
+
 Example of correct insertion:
+
 ---
+
 During the analyzed period, 4,823 authentication events were recorded,
+
 of which 67% correspond to repeated failures from the 10.10.2.x segment,
+
 with a sharp peak between 02:00 and 04:00 UTC on the 14th.
- 
+
 {{{{CHART: auth_failure_distribution_by_hour}}}}
- 
+
 This activity outside normal business hours suggests automated behavior
+
 consistent with password spraying techniques (MITRE T1110.003)...
----
- 
-════════════════════════════════════════
-CHART AGGREGATION DATA
-════════════════════════════════════════
-{json.dumps(chart_data, indent=2)}
- 
-════════════════════════════════════════
-RAW CSV TELEMETRY
-════════════════════════════════════════
-{json.dumps(csv_data, indent=2)}
- 
-════════════════════════════════════════
-REFERENCE REPORT (style only)
-════════════════════════════════════════
+
+
+You must analyze the raw CSV data directly.
+
+Use the reference report ONLY as a stylistic and structural guide.
+Do NOT reuse its incidents, conclusions, or content.
+
 {referenceReport}
- 
-════════════════════════════════════════
-MANDATORY VERIFICATION BEFORE WRITING
-════════════════════════════════════════
-Answer these questions in a <verification> block at the start
-(it will be stripped from the final report by post-processing):
- 
-<verification>
-1. How many unique records are in the CSV?
-2. What is the actual detected date range?
-3. What are the 3 most frequent events?
-4. Are there external IPs or domains in egress traffic? (yes/no + examples)
-5. Are there suspicious Linux commands? (yes/no + examples if present)
-6. How many unique assets (hosts/IPs) are present?
-7. List the chart_identifiers you plan to use in the report.
-</verification>
- 
-Then generate the full report following the system prompt structure exactly,
-with {{{{CHART: ...}}}} placeholders embedded inline in the text as described
-in the insertion rules above."""
+
+=== RAW CSV FILES ===
+{json.dumps(csv_data, indent=2)}
+
+Generate the full SOC report using the telemetry data.
+
+Follow the writing style, tone, and structure of the reference report,
+but base ALL analysis strictly on the telemetry provided.
+"""
             }
         ],
         temperature=0.6,
