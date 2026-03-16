@@ -35,7 +35,7 @@ def load_model():
 
     payload = {
         "model": MODEL_ID,
-        "context_length": 25000,
+        "context_length": 30000,
         "eval_batch_size": 256,
         "offload_kv_cache_to_gpu": True,
         "echo_load_config": True
@@ -240,8 +240,9 @@ but base ALL analysis strictly on the telemetry provided.
 """
             }
         ],
-        temperature=0.6,
-        top_p=0.9,
+        temperature=0.7,
+        top_p=0.95,
+        min_p=0.01,
         max_tokens=30000,
         n=1
     )
