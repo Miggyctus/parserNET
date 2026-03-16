@@ -242,7 +242,7 @@ but base ALL analysis strictly on the telemetry provided.
         ],
         temperature=0.7,
         top_p=0.95,
-        min_p=0.01,
+        
         max_tokens=30000,
         n=1
     )
