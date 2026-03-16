@@ -16,7 +16,7 @@ BACKEND_URL = "http://localhost:8000/execute"
 
 REPORT_PATH = "output/reports/llm_report.txt"
 SUMMARY_PATH = "output/json/csv_summary.json"
-OUTPUT_JSON = "output/json/llm_charts.json"
+OUTPUT_JSON = "output/json/llm_output.json"
 
 client = OpenAI(
     base_url=BASE_URL,
