@@ -152,7 +152,6 @@ You are provided with:
 
 [1] PRIMARY — RAW CSV (analysis, evidence, findings)
 Every finding MUST cite: exact field | real value | timestamp
-If CSV and charts contradict: CSV prevails — flag the discrepancy
 
 [2] REFERENCE — EXAMPLE REPORT (tone and style only)
 PROHIBITED to copy: incidents, IPs, users, hostnames, dates, conclusions
@@ -173,56 +172,11 @@ HOW to name the chart_identifier:
 Lowercase, letters/numbers/underscores only
 Must reflect EXACTLY the metric analyzed in that paragraph
 
-- Correct examples:
-
-top10_events_by_type
-alert_trend_by_hour
-
-      severity_distribution_endpoints
-
-      egress_volume_by_external_destination
-
-      top_users_with_auth_failures
-
-      suspicious_linux_command_distribution
-
-  - Incorrect examples: chart1, graph_1, data_chart
-
-WHERE placeholders go by section:
-
-  Section 6  (Statistical Analysis)  → minimum 3 placeholders
-
-  Section 7  (Findings)              → 1 per finding that warrants it
-
-  Section 8  (Egress)                → minimum 2 placeholders
-
-  Section 9  (Linux Activity)        → minimum 1 placeholder (if data exists)
-
-  Section 10 (Risk Analysis)         → 1 risk matrix placeholder
-
 MINIMUM TOTAL PLACEHOLDERS IN REPORT: 8
 
 MAXIMUM TOTAL: 20
 
 ABSOLUTE RULE: no chart_identifier may ever be repeated in the entire report
-
-Example of correct insertion:
-
----
-
-During the analyzed period, 4,823 authentication events were recorded,
-
-of which 67% correspond to repeated failures from the 10.10.2.x segment,
-
-with a sharp peak between 02:00 and 04:00 UTC on the 14th.
-
-{{{{CHART: auth_failure_distribution_by_hour}}}}
-
-This activity outside normal business hours suggests automated behavior
-
-consistent with password spraying techniques (MITRE T1110.003)...
-
-
 You must analyze the raw CSV data directly.
 
 Use the reference report ONLY as a stylistic and structural guide.
