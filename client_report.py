@@ -188,7 +188,9 @@ Do NOT reuse its incidents, conclusions, or content.
 {json.dumps(csv_data, indent=2)}
 
 Generate the full SOC report using the telemetry data.
-
+The report must be AT LEAST 12000 words.
+Do not stop early.
+Continue writing until all sections are deeply elaborated.
 Follow the writing style, tone, and structure of the reference report,
 but base ALL analysis strictly on the telemetry provided.
 """
