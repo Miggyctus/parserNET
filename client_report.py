@@ -154,6 +154,8 @@ You are provided with:
 Every finding MUST cite: exact field | real value | timestamp
 
 [2] REFERENCE — EXAMPLE REPORT (tone and style only)
+DO NOT TRY TO CORRELATE TO THE REFERENCE REPORT. It is just a stylistic example.
+NEVER reuse its content, incidents, conclusions, or data.
 PROHIBITED to copy: incidents, IPs, users, hostnames, dates, conclusions
 
 Chart placeholders {{{{CHART: chart_identifier}}}} ARE PART OF THE REPORT.
