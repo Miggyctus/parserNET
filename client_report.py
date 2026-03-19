@@ -188,9 +188,9 @@ def generate_section(section, system_prompt, csv_data, reference):
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt}
         ],
-        temperature=0.6,
+        temperature=0.5,
         top_p=0.9,
-        max_tokens=5000,
+        max_tokens=3000,
     )
     message = completion.choices[0].message
 
@@ -222,7 +222,7 @@ def assemble_report(sections_content):
 }
 
     for section, content in sections_content.items():
-        report.append(f"\n\n {titles[section]}\n\n{content}")
+        report.append(f"\n\n {titles[section.lower()]}\n\n{content}")
 
     return "\n".join(report)
 
@@ -324,7 +324,7 @@ def generate_report():
 
         with open(REPORT_TEXT_PATH, "w", encoding="utf-8") as f:
             f.write(final_report)
-            
+
         return final_report
 
 
