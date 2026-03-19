@@ -23,6 +23,25 @@ client = OpenAI(
     http_client=httpx.Client(timeout=900.0)
 )
 
+SECTIONS = [
+    "PORTADA",
+    "ÍNDICE",
+    "RESUMEN EJECUTIVO",
+    "OBJECTIVOS Y ALCANCE",
+    "ACTIVOS ANALIZADOS",
+    "ANALISIS ESTADISTICO DE EVENTOS",
+    "HALLAZGOS DETALLADOS Y MAPEO MITRE ATT&CK",
+    "ANALISIS  DE TRAFICO DE SALIDA",
+    "ANALISIS DE ACTIVIDAD LINUX Y LINEA DE COMANDOS",
+    "ANALISIS DE RIESGO CONSOLIDADOS",
+    "ANALISIS DE IDENTIDAD Y ACCESO",
+    "ANALISIS DE CUMPLIMIENTO NORMATIVO",
+    "OPORTUNIDADES DE MEJORA DE VISIBILIDAD",
+    "RECOMENDACIONES Y ACCIONES A CORTO PLAZO",
+    "HOJA DE RUTA DE REMEDIACION",
+    "CONCLUSION"
+]
+
 # =========================
 # Model Load / Unload
 # =========================
@@ -138,6 +157,75 @@ def load_reference_report():
 # LLM Call
 # =========================
 
+def build_section_prompt(section, csv_data, reference):
+    return f"""
+    You are generating a SOC report section.
+
+    SECTION: {section}
+
+    STRICT RULES:
+    - Only generate THIS section
+    - Do NOT generate other sections
+    - Use telemetry data strictly
+    - Insert chart placeholders when relevant
+    - No repetition of charts across sections
+
+    === DATA ===
+    {json.dumps(csv_data, indent=2)}
+
+    === STYLE REFERENCE ===
+    {reference}
+
+    Generate ONLY the section content.
+    """
+
+def generate_section(section, system_prompt, csv_data, reference):
+    prompt = build_section_prompt(section, csv_data, reference)
+
+    completion = client.chat.completions.create(
+        model=MODEL_ID,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.6,
+        top_p=0.9,
+        max_tokens=5000,
+    )
+    message = completion.choices[0].message
+
+    if not message:
+        raise RuntimeError(f"LLM returned empty response for section {section}")
+
+    return message.content
+
+def assemble_report(sections_content):
+    report = []
+
+    titles = {
+    "portada": "PORTADA",
+    "indice": "ÍNDICE",
+    "resumen_ejecutivo": "RESUMEN EJECUTIVO",
+    "objetivos_y_alcance": "OBJECTIVOS Y ALCANCE",
+    "activos_analizados": "ACTIVOS ANALIZADOS",
+    "analisis_estadistico_eventos": "ANALISIS ESTADISTICO DE EVENTOS",
+    "hallazgos_mitre_attack": "HALLAZGOS DETALLADOS Y MAPEO MITRE ATT&CK",
+    "analisis_trafico_salida": "ANALISIS  DE TRAFICO DE SALIDA",
+    "analisis_linux_linea_comandos": "ANALISIS DE ACTIVIDAD LINUX Y LINEA DE COMANDOS",
+    "analisis_riesgo_consolidado": "ANALISIS DE RIESGO CONSOLIDADOS",
+    "analisis_identidad_acceso": "ANALISIS DE IDENTIDAD Y ACCESO",
+    "analisis_cumplimiento": "ANALISIS DE CUMPLIMIENTO NORMATIVO",
+    "oportunidades_mejora_visibilidad": "OPORTUNIDADES DE MEJORA DE VISIBILIDAD",
+    "recomendaciones_corto_plazo": "RECOMENDACIONES Y ACCIONES A CORTO PLAZO",
+    "hoja_ruta_remediacion": "HOJA DE RUTA DE REMEDIACION",
+    "conclusion": "CONCLUSION"
+}
+
+    for section, content in sections_content.items():
+        report.append(f"\n\n {titles[section]}\n\n{content}")
+
+    return "\n".join(report)
+
 def ask_llm(system_prompt: str, chart_data: dict, csv_data: dict):
 
     referenceReport= load_reference_report()
@@ -216,19 +304,28 @@ def generate_report():
     system_prompt = load_system_prompt()
     chart_data = load_chart_json()
     csv_data = load_all_csv(CSV_FOLDER)
+    reference = load_reference_report()
+
+    sections_content ={}
 
     with model_session():
-        raw = ask_llm(system_prompt, chart_data, csv_data)
-
-        if not raw or not raw.strip():
-            raise RuntimeError("LLM returned empty response")
+        for section in SECTIONS:
+            print(f"Generating {section}...")
+            content = generate_section(
+                section,
+                system_prompt,
+                csv_data,
+                reference
+            )
+            sections_content[section] = content
+        final_report = assemble_report(sections_content)
 
         os.makedirs("output/reports", exist_ok=True)
 
         with open(REPORT_TEXT_PATH, "w", encoding="utf-8") as f:
-            f.write(raw)
-
-        return raw
+            f.write(final_report)
+            
+        return final_report
 
 
 def main():
