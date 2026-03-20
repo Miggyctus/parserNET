@@ -203,26 +203,29 @@ def assemble_report(sections_content):
     report = []
 
     titles = {
-    "portada": "PORTADA",
-    "indice": "INDICE",
-    "resumen_ejecutivo": "RESUMEN EJECUTIVO",
-    "objetivos_y_alcance": "OBJECTIVOS Y ALCANCE",
-    "activos_analizados": "ACTIVOS ANALIZADOS",
-    "analisis_estadistico_eventos": "ANALISIS ESTADISTICO DE EVENTOS",
-    "hallazgos_mitre_attack": "HALLAZGOS DETALLADOS Y MAPEO MITRE ATT&CK",
-    "analisis_trafico_salida": "ANALISIS  DE TRAFICO DE SALIDA",
-    "analisis_linux_linea_comandos": "ANALISIS DE ACTIVIDAD LINUX Y LINEA DE COMANDOS",
-    "analisis_riesgo_consolidado": "ANALISIS DE RIESGO CONSOLIDADOS",
-    "analisis_identidad_acceso": "ANALISIS DE IDENTIDAD Y ACCESO",
-    "analisis_cumplimiento": "ANALISIS DE CUMPLIMIENTO NORMATIVO",
-    "oportunidades_mejora_visibilidad": "OPORTUNIDADES DE MEJORA DE VISIBILIDAD",
-    "recomendaciones_corto_plazo": "RECOMENDACIONES Y ACCIONES A CORTO PLAZO",
-    "hoja_ruta_remediacion": "HOJA DE RUTA DE REMEDIACION",
-    "conclusion": "CONCLUSION"
-}
+        "portada": "PORTADA",
+        "indice": "INDICE",
+        "resumen_ejecutivo": "RESUMEN EJECUTIVO",
+        "objetivos_y_alcance": "OBJECTIVOS Y ALCANCE",
+        "activos_analizados": "ACTIVOS ANALIZADOS",
+        "analisis_estadistico_eventos": "ANALISIS ESTADISTICO DE EVENTOS",
+        "hallazgos_mitre_attack": "HALLAZGOS DETALLADOS Y MAPEO MITRE ATT&CK",
+        "analisis_trafico_salida": "ANALISIS  DE TRAFICO DE SALIDA",
+        "analisis_linux_linea_comandos": "ANALISIS DE ACTIVIDAD LINUX Y LINEA DE COMANDOS",
+        "analisis_riesgo_consolidado": "ANALISIS DE RIESGO CONSOLIDADOS",
+        "analisis_identidad_acceso": "ANALISIS DE IDENTIDAD Y ACCESO",
+        "analisis_cumplimiento": "ANALISIS DE CUMPLIMIENTO NORMATIVO",
+        "oportunidades_mejora_visibilidad": "OPORTUNIDADES DE MEJORA DE VISIBILIDAD",
+        "recomendaciones_corto_plazo": "RECOMENDACIONES Y ACCIONES A CORTO PLAZO",
+        "hoja_ruta_remediacion": "HOJA DE RUTA DE REMEDIACION",
+        "conclusion": "CONCLUSION"
+    }
 
     for section, content in sections_content.items():
-        report.append(f"\n\n {titles[section.lower()]}\n\n{content}")
+
+        key = section.lower().replace(" ", "_")
+
+        report.append(f"\n\n {titles.get(key, section)}\n\n{content}")
 
     return "\n".join(report)
 
