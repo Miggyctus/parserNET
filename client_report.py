@@ -25,7 +25,6 @@ client = OpenAI(
 
 SECTIONS = [
     "PORTADA",
-    "INDICE",
     "RESUMEN EJECUTIVO",
     "OBJECTIVOS Y ALCANCE",
     "ACTIVOS ANALIZADOS",
@@ -204,7 +203,6 @@ def assemble_report(sections_content):
 
     titles = {
         "portada": "PORTADA",
-        "indice": "INDICE",
         "resumen_ejecutivo": "RESUMEN EJECUTIVO",
         "objetivos_y_alcance": "OBJECTIVOS Y ALCANCE",
         "activos_analizados": "ACTIVOS ANALIZADOS",

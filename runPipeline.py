@@ -17,7 +17,7 @@ def run():
         BACKEND_URL,
         json={
             "action": "generate_chart",
-            "json_path": "output/json/llm_charts.json"
+            "json_path": "output/json/llm_output.json"
         }
     )
 
