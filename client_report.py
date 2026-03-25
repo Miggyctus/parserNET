@@ -189,7 +189,7 @@ def generate_section(section, system_prompt, csv_data, reference):
         ],
         temperature=0.5,
         top_p=0.9,
-        max_tokens=3000,
+        max_tokens=2000,
     )
     message = completion.choices[0].message
 
