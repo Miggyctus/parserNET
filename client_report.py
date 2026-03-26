@@ -41,6 +41,24 @@ SECTIONS = [
     "CONCLUSION"
 ]
 
+SECTION_TOKEN_LIMITS = {
+    "PORTADA E INDICE": 800,
+    "RESUMEN EJECUTIVO": 1500,
+    "OBJECTIVOS Y ALCANCE": 1200,
+    "ACTIVOS ANALIZADOS": 1800,
+    "ANALISIS ESTADISTICO DE EVENTOS": 4000,
+    "HALLAZGOS DETALLADOS Y MAPEO MITRE ATT&CK": 5000,
+    "ANALISIS  DE TRAFICO DE SALIDA": 3500,
+    "ANALISIS DE ACTIVIDAD LINUX Y LINEA DE COMANDOS": 4000,
+    "ANALISIS DE RIESGO CONSOLIDADOS": 4500,
+    "ANALISIS DE IDENTIDAD Y ACCESO": 5000,
+    "ANALISIS DE CUMPLIMIENTO NORMATIVO": 5000,
+    "OPORTUNIDADES DE MEJORA DE VISIBILIDAD": 2500,
+    "RECOMENDACIONES Y ACCIONES A CORTO PLAZO": 2500,
+    "HOJA DE RUTA DE REMEDIACION": 3000,
+    "CONCLUSION": 1200
+}
+
 # =========================
 # Model Load / Unload
 # =========================
@@ -180,7 +198,7 @@ def build_section_prompt(section, csv_data, reference):
 
 def generate_section(section, system_prompt, csv_data, reference):
     prompt = build_section_prompt(section, csv_data, reference)
-
+    maxTokens = SECTION_TOKEN_LIMITS.get(section, 2000)
     completion = client.chat.completions.create(
         model=MODEL_ID,
         messages=[
@@ -189,7 +207,7 @@ def generate_section(section, system_prompt, csv_data, reference):
         ],
         temperature=0.5,
         top_p=0.9,
-        max_tokens=3000,
+        max_tokens=maxTokens,
     )
     message = completion.choices[0].message
 
