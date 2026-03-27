@@ -37,7 +37,7 @@ def load_model():
 
     payload = {
         "model": MODEL_ID,
-        "context_length": 40000,
+        "context_length": 35000,
         "eval_batch_size": 256,
         "flash_attention": False,
         "offload_kv_cache_to_gpu": True,
@@ -165,7 +165,7 @@ OUTPUT (raw JSON only):
         model=MODEL_ID,
         messages=[{"role": "user", "content": prompt}],
         temperature=0.6,
-        top_p=0.9,
+        top_p=1.0,
         max_tokens=10000,
         n=1
     )
