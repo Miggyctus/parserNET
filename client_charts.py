@@ -164,8 +164,8 @@ OUTPUT (raw JSON only):
     completion = client.chat.completions.create(
         model=MODEL_ID,
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.6,
-        top_p=1.0,
+        temperature=0.3,
+        top_p=0.85,
         max_tokens=10000,
         n=1
     )
