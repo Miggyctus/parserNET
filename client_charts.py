@@ -39,7 +39,7 @@ def load_model():
         "model": MODEL_ID,
         "context_length": 35000,
         "eval_batch_size": 256,
-        "flash_attention": False,
+        "flash_attention": True,
         "offload_kv_cache_to_gpu": True,
         "echo_load_config": True
     }
@@ -164,8 +164,8 @@ OUTPUT (raw JSON only):
     completion = client.chat.completions.create(
         model=MODEL_ID,
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.3,
-        top_p=0.85,
+        temperature=0.9,
+        top_p=1.0,
         max_tokens=10000,
         n=1
     )
