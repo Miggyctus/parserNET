@@ -22,7 +22,7 @@ OUTPUT_JSON = "output/json/llm_output.json"
 client = OpenAI(
     base_url=BASE_URL,
     api_key="lm-studio",
-    http_client=httpx.Client(timeout=900.0)
+    http_client=httpx.Client(timeout=3600.0)
 )
 
 # =========================
