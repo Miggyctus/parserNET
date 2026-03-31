@@ -145,7 +145,7 @@ REQUESTED CHART PLACEHOLDERS ({len(placeholders)} total)
 ════════════════════════════════════════
 CSV DATA
 ════════════════════════════════════════
-{json.dumps(csv_data, separators=(',', ':'))}
+{json.dumps(csv_data, indent=2)}
 ════════════════════════════════════════
 EXECUTION CHECKLIST
 ════════════════════════════════════════
