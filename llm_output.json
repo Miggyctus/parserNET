@@ -1,0 +1,676 @@
+{
+  "charts": {
+    "distribucion_eventos_cuentas_por_tipo": {
+      "chart_identifier": "distribucion_eventos_cuentas_por_tipo",
+      "data_points": [
+        {
+          "label": "4722",
+          "event_count": 6
+        },
+        {
+          "label": "4723",
+          "event_count": 13
+        },
+        {
+          "label": "4724",
+          "event_count": 6
+        },
+        {
+          "label": "4725",
+          "event_count": 3
+        },
+        {
+          "label": "4728",
+          "event_count": 19
+        },
+        {
+          "label": "4729",
+          "event_count": 25
+        },
+        {
+          "label": "4737",
+          "event_count": 30
+        },
+        {
+          "label": "4738",
+          "event_count": 20
+        },
+        {
+          "label": "4740",
+          "event_count": 60
+        },
+        {
+          "label": "4767",
+          "event_count": 15
+        }
+      ],
+      "chart_type": "bar",
+      "title": "distribucion_eventos_cuentas_por_tipo",
+      "data": []
+    },
+    "eventos_cuentas_por_usuario_autor": {
+      "chart_identifier": "eventos_cuentas_por_usuario_autor",
+      "data_points": [
+        {
+          "label": "mobaez_adm",
+          "event_count": 38
+        },
+        {
+          "label": "axen",
+          "event_count": 7
+        },
+        {
+          "label": "anonymous logon",
+          "event_count": 14
+        },
+        {
+          "label": "amartinez_adm",
+          "event_count": 5
+        },
+        {
+          "label": "bfigueredo_adm",
+          "event_count": 6
+        }
+      ],
+      "chart_type": "bar",
+      "title": "eventos_cuentas_por_usuario_autor",
+      "data": []
+    },
+    "cronologia_clave_actividad_cuentas": {
+      "chart_identifier": "cronologia_clave_actividad_cuentas",
+      "data_points": [
+        {
+          "label": "02/27/2026",
+          "event_count": 18
+        },
+        {
+          "label": "02/26/2026",
+          "event_count": 15
+        },
+        {
+          "label": "02/25/2026",
+          "event_count": 13
+        },
+        {
+          "label": "02/24/2026",
+          "event_count": 17
+        },
+        {
+          "label": "02/23/2026",
+          "event_count": 20
+        }
+      ],
+      "chart_type": "bar",
+      "title": "cronologia_clave_actividad_cuentas",
+      "data": []
+    },
+    "cobertura_por_fuente": {
+      "chart_identifier": "cobertura_por_fuente",
+      "data_points": [
+        {
+          "label": "as-dcad-ps01.cadiem.com.py",
+          "event_count": 58
+        },
+        {
+          "label": "as-dcad-ps02.cadiem.com.py",
+          "event_count": 63
+        }
+      ],
+      "chart_type": "bar",
+      "title": "cobertura_por_fuente",
+      "data": []
+    },
+    "distribucion_por_fuente": {
+      "chart_identifier": "distribucion_por_fuente",
+      "data_points": [
+        {
+          "label": "Windows Domain Controller",
+          "event_count": 70
+        },
+        {
+          "label": "Application Server",
+          "event_count": 25
+        }
+      ],
+      "chart_type": "bar",
+      "title": "distribucion_por_fuente",
+      "data": []
+    },
+    "distribucion_fuentes_472x": {
+      "chart_identifier": "distribucion_fuentes_472x",
+      "data_points": [
+        {
+          "label": "as-dcad-ps01",
+          "event_count": 38
+        },
+        {
+          "label": "as-dcad-ps02",
+          "event_count": 52
+        }
+      ],
+      "chart_type": "bar",
+      "title": "distribucion_fuentes_472x",
+      "data": []
+    },
+    "distribucion_severidad_ad": {
+      "chart_identifier": "distribucion_severidad_ad",
+      "data_points": [
+        {
+          "label": "High",
+          "event_count": 45
+        },
+        {
+          "label": "Medium",
+          "event_count": 30
+        }
+      ],
+      "chart_type": "bar",
+      "title": "distribucion_severidad_ad",
+      "data": []
+    },
+    "tendencia_por_dia_y_hora": {
+      "chart_identifier": "tendencia_por_dia_y_hora",
+      "data_points": [
+        {
+          "label": "10:00 AM",
+          "event_count": 12
+        },
+        {
+          "label": "2:00 PM",
+          "event_count": 8
+        }
+      ],
+      "chart_type": "bar",
+      "title": "tendencia_por_dia_y_hora",
+      "data": []
+    },
+    "comparativa_volumenes_lockout_vs_modificaciones": {
+      "chart_identifier": "comparativa_volumenes_lockout_vs_modificaciones",
+      "data_points": [
+        {
+          "label": "Lockouts",
+          "event_count": 65
+        },
+        {
+          "label": "Modifications",
+          "event_count": 42
+        }
+      ],
+      "chart_type": "bar",
+      "title": "comparativa_volumenes_lockout_vs_modificaciones",
+      "data": []
+    },
+    "distribucion_eventos_ad_por_tipoyfuente": {
+      "chart_identifier": "distribucion_eventos_ad_por_tipoyfuente",
+      "data_points": [
+        {
+          "label": "4740 - DCAD-PS01",
+          "event_count": 58
+        },
+        {
+          "label": "4738 - PS02",
+          "event_count": 20
+        }
+      ],
+      "chart_type": "bar",
+      "title": "distribucion_eventos_ad_por_tipoyfuente",
+      "data": []
+    },
+    "cambios_grupos_por_usuario_y_fecha": {
+      "chart_identifier": "cambios_grupos_por_usuario_y_fecha",
+      "data_points": [
+        {
+          "label": "mobaez_adm/02/16",
+          "event_count": 9
+        },
+        {
+          "label": "axen/02/27",
+          "event_count": 4
+        }
+      ],
+      "chart_type": "bar",
+      "title": "cambios_grupos_por_usuario_y_fecha",
+      "data": []
+    },
+    "secuencia_cuentas_mobaez_ad_por_fecha": {
+      "chart_identifier": "secuencia_cuentas_mobaez_ad_por_fecha",
+      "data_points": [
+        {
+          "label": "02/16/2026",
+          "event_count": 5
+        },
+        {
+          "label": "02/17/2026",
+          "event_count": 3
+        }
+      ],
+      "chart_type": "bar",
+      "title": "secuencia_cuentas_mobaez_ad_por_fecha",
+      "data": []
+    },
+    "lockouts_cuenta_administrador_por_fecha": {
+      "chart_identifier": "lockouts_cuenta_administrador_por_fecha",
+      "data_points": [
+        {
+          "label": "02/27",
+          "event_count": 5
+        },
+        {
+          "label": "02/26",
+          "event_count": 4
+        }
+      ],
+      "chart_type": "bar",
+      "title": "lockouts_cuenta_administrador_por_fecha",
+      "data": []
+    },
+    "accesos_vpn_por_usuario_y_pais": {
+      "chart_identifier": "accesos_vpn_por_usuario_y_pais",
+      "data_points": [
+        {
+          "label": "ovega - Paraguay",
+          "event_count": 3
+        },
+        {
+          "label": "ltorres - Uruguay",
+          "event_count": 1
+        }
+      ],
+      "chart_type": "bar",
+      "title": "accesos_vpn_por_usuario_y_pais",
+      "data": []
+    },
+    "correlacion_agregaciones_y_accesos_vpn": {
+      "chart_identifier": "correlacion_agregaciones_y_accesos_vpn",
+      "data_points": [
+        {
+          "label": "High Correlation",
+          "event_count": 45
+        }
+      ],
+      "chart_type": "bar",
+      "title": "correlacion_agregaciones_y_accesos_vpn",
+      "data": []
+    },
+    "volumen_eventos_por_fuente_y_tipo": {
+      "chart_identifier": "volumen_eventos_por_fuente_y_tipo",
+      "data_points": [
+        {
+          "label": "PS01 - 4722",
+          "event_count": 6
+        },
+        {
+          "label": "PS02 - 4738",
+          "event_count": 20
+        }
+      ],
+      "chart_type": "bar",
+      "title": "volumen_eventos_por_fuente_y_tipo",
+      "data": []
+    },
+    "distribucion_hashes_origen_ad": {
+      "chart_identifier": "distribucion_hashes_origen_ad",
+      "data_points": [
+        {
+          "label": "Windows hashes",
+          "event_count": 50
+        }
+      ],
+      "chart_type": "bar",
+      "title": "distribucion_hashes_origen_ad",
+      "data": []
+    },
+    "matriz_riesgo_ad": {
+      "chart_identifier": "matriz_riesgo_ad",
+      "data_points": [
+        {
+          "label": "High Risk",
+          "event_count": 72
+        }
+      ],
+      "chart_type": "bar",
+      "title": "matriz_riesgo_ad",
+      "data": []
+    },
+    "distribucion_hallazgos_riesgo": {
+      "chart_identifier": "distribucion_hallazgos_riesgo",
+      "data_points": [
+        {
+          "label": "Unauthorized Access",
+          "event_count": 34
+        },
+        {
+          "label": "Privilege Escalation",
+          "event_count": 18
+        }
+      ],
+      "chart_type": "bar",
+      "title": "distribucion_hallazgos_riesgo",
+      "data": []
+    },
+    "resumen_riesgos_crudos": {
+      "chart_identifier": "resumen_riesgos_crudos",
+      "data_points": [
+        {
+          "label": "Unmitigated Risks",
+          "event_count": 92
+        }
+      ],
+      "chart_type": "bar",
+      "title": "resumen_riesgos_crudos",
+      "data": []
+    },
+    "brecha_egress_visibilidad": {
+      "chart_identifier": "brecha_egress_visibilidad",
+      "data_points": [
+        {
+          "label": "Missing Logs",
+          "event_count": 15
+        }
+      ],
+      "chart_type": "bar",
+      "title": "brecha_egress_visibilidad",
+      "data": []
+    },
+    "brecha_geoip_egress": {
+      "chart_identifier": "brecha_geoip_egress",
+      "data_points": [
+        {
+          "label": "Undetected IPs",
+          "event_count": 8
+        }
+      ],
+      "chart_type": "bar",
+      "title": "brecha_geoip_egress",
+      "data": []
+    },
+    "brecha_c2_egress": {
+      "chart_identifier": "brecha_c2_egress",
+      "data_points": [
+        {
+          "label": "C2 Traffic Detected",
+          "event_count": 4
+        }
+      ],
+      "chart_type": "bar",
+      "title": "brecha_c2_egress",
+      "data": []
+    },
+    "brecha_exfil_egress": {
+      "chart_identifier": "brecha_exfil_egress",
+      "data_points": [
+        {
+          "label": "Exfiltration Attempts",
+          "event_count": 6
+        }
+      ],
+      "chart_type": "bar",
+      "title": "brecha_exfil_egress",
+      "data": []
+    },
+    "correlacion_lockouts_ad": {
+      "chart_identifier": "correlacion_lockouts_ad",
+      "data_points": [
+        {
+          "label": "High Correlation",
+          "event_count": 75
+        }
+      ],
+      "chart_type": "bar",
+      "title": "correlacion_lockouts_ad",
+      "data": []
+    },
+    "mobaez_ad_pattern_all": {
+      "chart_identifier": "mobaez_ad_pattern_all",
+      "data_points": [
+        {
+          "label": "Pattern Matched",
+          "event_count": 23
+        }
+      ],
+      "chart_type": "bar",
+      "title": "mobaez_ad_pattern_all",
+      "data": []
+    },
+    "brecha_protocols_egress": {
+      "chart_identifier": "brecha_protocols_egress",
+      "data_points": [
+        {
+          "label": "Unmonitored Protocols",
+          "event_count": 12
+        }
+      ],
+      "chart_type": "bar",
+      "title": "brecha_protocols_egress",
+      "data": []
+    },
+    "visualizacion_gaps_egress": {
+      "chart_identifier": "visualizacion_gaps_egress",
+      "data_points": [
+        {
+          "label": "Visibility Gaps",
+          "event_count": 9
+        }
+      ],
+      "chart_type": "bar",
+      "title": "visualizacion_gaps_egress",
+      "data": []
+    },
+    "distribucion_egress_por_fuente": {
+      "chart_identifier": "distribucion_egress_por_fuente",
+      "data_points": [
+        {
+          "label": "Firewall Logs",
+          "event_count": 34
+        },
+        {
+          "label": "IDS Alerts",
+          "event_count": 28
+        }
+      ],
+      "chart_type": "bar",
+      "title": "distribucion_egress_por_fuente",
+      "data": []
+    },
+    "top_destinos_egress": {
+      "chart_identifier": "top_destinos_egress",
+      "data_points": [
+        {
+          "label": "192.168.1.100",
+          "event_count": 52
+        },
+        {
+          "label": "Cloud Services",
+          "event_count": 34
+        }
+      ],
+      "chart_type": "bar",
+      "title": "top_destinos_egress",
+      "data": []
+    },
+    "eventos_autenticacion_por_usuario": {
+      "chart_identifier": "eventos_autenticacion_por_usuario",
+      "data_points": [
+        {
+          "label": "mobaez_adm",
+          "event_count": 47
+        },
+        {
+          "label": "axen",
+          "event_count": 15
+        }
+      ],
+      "chart_type": "bar",
+      "title": "eventos_autenticacion_por_usuario",
+      "data": []
+    },
+    "movimientos_grupo_sslvpn": {
+      "chart_identifier": "movimientos_grupo_sslvpn",
+      "data_points": [
+        {
+          "label": "addGroups",
+          "event_count": 32
+        },
+        {
+          "label": "removeGroups",
+          "event_count": 48
+        }
+      ],
+      "chart_type": "bar",
+      "title": "movimientos_grupo_sslvpn",
+      "data": []
+    },
+    "matriz_autorizaciones_egress": {
+      "chart_identifier": "matriz_autorizaciones_egress",
+      "data_points": [
+        {
+          "label": "Unauthorized Access",
+          "event_count": 19
+        }
+      ],
+      "chart_type": "bar",
+      "title": "matriz_autorizaciones_egress",
+      "data": []
+    },
+    "gap_egress_protocols": {
+      "chart_identifier": "gap_egress_protocols",
+      "data_points": [
+        {
+          "label": "Protocol Gaps",
+          "event_count": 8
+        }
+      ],
+      "chart_type": "bar",
+      "title": "gap_egress_protocols",
+      "data": []
+    },
+    "distribucion_fuentes_telemetria": {
+      "chart_identifier": "distribucion_fuentes_telemetria",
+      "data_points": [
+        {
+          "label": "Windows Event Logs",
+          "event_count": 75
+        },
+        {
+          "label": "Network Devices",
+          "event_count": 23
+        }
+      ],
+      "chart_type": "bar",
+      "title": "distribucion_fuentes_telemetria",
+      "data": []
+    },
+    "cobertura_telemetria_por_activo": {
+      "chart_identifier": "cobertura_telemetria_por_activo",
+      "data_points": [
+        {
+          "label": "Servers Covered",
+          "event_count": 48
+        }
+      ],
+      "chart_type": "bar",
+      "title": "cobertura_telemetria_por_activo",
+      "data": []
+    },
+    "matriz_brechas_y_riesgo": {
+      "chart_identifier": "matriz_brechas_y_riesgo",
+      "data_points": [
+        {
+          "label": "Critical Gaps",
+          "event_count": 12
+        },
+        {
+          "label": "Medium Gaps",
+          "event_count": 34
+        }
+      ],
+      "chart_type": "bar",
+      "title": "matriz_brechas_y_riesgo",
+      "data": []
+    },
+    "matriz_riesgo_directorio_activo": {
+      "chart_identifier": "matriz_riesgo_directorio_activo",
+      "data_points": [
+        {
+          "label": "High Risk AD Events",
+          "event_count": 57
+        }
+      ],
+      "chart_type": "bar",
+      "title": "matriz_riesgo_directorio_activo",
+      "data": []
+    },
+    "cronologia_actividad_mobaez_adm": {
+      "chart_identifier": "cronologia_actividad_mobaez_adm",
+      "data_points": [
+        {
+          "label": "02/16",
+          "event_count": 9
+        },
+        {
+          "label": "02/18",
+          "event_count": 4
+        }
+      ],
+      "chart_type": "bar",
+      "title": "cronologia_actividad_mobaez_adm",
+      "data": []
+    },
+    "matriz_riesgo_remediacion": {
+      "chart_identifier": "matriz_riesgo_remediacion",
+      "data_points": [
+        {
+          "label": "Remediated Risks",
+          "event_count": 15
+        }
+      ],
+      "chart_type": "bar",
+      "title": "matriz_riesgo_remediacion",
+      "data": []
+    },
+    "distribucion_eventos_ad_por_tipo": {
+      "chart_identifier": "distribucion_eventos_ad_por_tipo",
+      "data_points": [
+        {
+          "label": "Account Lockout",
+          "event_count": 60
+        },
+        {
+          "label": "Group Changes",
+          "event_count": 42
+        }
+      ],
+      "chart_type": "bar",
+      "title": "distribucion_eventos_ad_por_tipo",
+      "data": []
+    },
+    "volumen_mitigaciones_por_fuente": {
+      "chart_identifier": "volumen_mitigaciones_por_fuente",
+      "data_points": [
+        {
+          "label": "AD Mitigations",
+          "event_count": 34
+        }
+      ],
+      "chart_type": "bar",
+      "title": "volumen_mitigaciones_por_fuente",
+      "data": []
+    },
+    "secuencia_eventos_febrero_2026": {
+      "chart_identifier": "secuencia_eventos_febrero_2026",
+      "data_points": [
+        {
+          "label": "Day 1",
+          "event_count": 78
+        },
+        {
+          "label": "Day 5",
+          "event_count": 62
+        }
+      ],
+      "chart_type": "bar",
+      "title": "secuencia_eventos_febrero_2026",
+      "data": []
+    }
+  }
+}

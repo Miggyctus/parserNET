@@ -34,6 +34,45 @@ def safe_load_json(path):
         return json.load(f)
 
 
+def normalize_chart_data(chart):
+    """
+    Normalizes chart data regardless of whether the model used
+    'data' or 'data_points' as the key, and regardless of whether
+    the value field is called 'event_count' or 'value'.
+    Returns the chart dict with a guaranteed 'data' key.
+    """
+
+    # prefer 'data' if it's already populated
+    data = chart.get("data")
+
+    # fall back to data_points if data is missing or empty
+    if not data:
+        data = chart.get("data_points")
+
+    if not isinstance(data, list) or not data:
+        chart["data"] = []
+        return chart
+
+    # normalize value field: accept 'event_count' or 'value'
+    normalized = []
+    for row in data:
+        if not isinstance(row, dict):
+            continue
+
+        label = row.get("label") or row.get("name") or row.get("category") or ""
+        value = row.get("event_count") or row.get("value") or row.get("count") or 0
+
+        try:
+            value = float(value)
+        except (TypeError, ValueError):
+            value = 0
+
+        normalized.append({"label": str(label), "event_count": value})
+
+    chart["data"] = normalized
+    return chart
+
+
 def validate_chart_structure(chart):
     if "data" not in chart:
         return False
@@ -66,53 +105,56 @@ def get_dimension_column(df):
 
 def render_chart(chart_id, chart):
 
+    # normalize before anything else
+    chart = normalize_chart_data(chart)
+
     if not validate_chart_structure(chart):
+        print(f"[SKIP] {chart_id}: empty or invalid data after normalization")
         return None
 
     df = pd.DataFrame(chart.get("data", []))
 
     if df.empty or "event_count" not in df.columns:
+        print(f"[SKIP] {chart_id}: DataFrame is empty or missing event_count")
         return None
 
     dimension_col = get_dimension_column(df)
     if not dimension_col:
+        print(f"[SKIP] {chart_id}: no dimension column found")
         return None
 
     chart_type = chart.get("chart_type", "bar").lower()
     if chart_type not in SUPPORTED_CHARTS:
         chart_type = "bar"
 
-    # Orden descendente
+    # sort descending
     try:
         df = df.sort_values("event_count", ascending=False)
     except Exception:
         pass
 
     # =========================
-    # 🎨 ENTERPRISE DARK THEME
+    # ENTERPRISE DARK THEME
     # =========================
     plt.style.use("dark_background")
 
     fig, ax = plt.subplots(figsize=(14, 8))
 
-    fig.patch.set_facecolor("#0B1220")     # Fondo general
-    ax.set_facecolor("#111827")            # Panel
+    fig.patch.set_facecolor("#0B1220")
+    ax.set_facecolor("#111827")
 
-    # Quitar bordes feos
     for spine in ax.spines.values():
         spine.set_visible(False)
 
-    # Grid sutil
     ax.grid(True, color="#1F2937", linestyle="--", linewidth=0.5, alpha=0.6)
 
-    # Paleta
     palette = [
-        "#3B82F6",  # azul
+        "#3B82F6",  # blue
         "#22D3EE",  # cyan
-        "#A78BFA",  # violeta
-        "#F97316",  # naranja
-        "#22C55E",  # verde
-        "#EF4444"   # rojo
+        "#A78BFA",  # violet
+        "#F97316",  # orange
+        "#22C55E",  # green
+        "#EF4444"   # red
     ]
 
     colors = palette * (len(df) // len(palette) + 1)
@@ -179,7 +221,7 @@ def render_chart(chart_id, chart):
             ax.bar(df[dimension_col], df["event_count"], color=colors[:len(df)])
 
         # =========================
-        # 🏷 Title & Labels
+        # Title & Labels
         # =========================
         ax.set_title(
             chart_id.replace("_", " ").title(),
@@ -198,10 +240,12 @@ def render_chart(chart_id, chart):
         plt.savefig(filename, dpi=300, facecolor=fig.get_facecolor())
         plt.close()
 
+        print(f"[OK] {chart_id} -> {filename}")
         return filename
 
-    except Exception:
+    except Exception as e:
         plt.close()
+        print(f"[ERROR] {chart_id}: {e}")
         return None
 
 
@@ -234,6 +278,7 @@ def main():
             return
 
         generated_files = []
+        skipped = []
 
         for chart_id, chart in charts.items():
 
@@ -241,9 +286,12 @@ def main():
 
             if file_path:
                 generated_files.append(file_path)
+            else:
+                skipped.append(chart_id)
 
         print(json.dumps({
-            "generated_charts": generated_files
+            "generated_charts": generated_files,
+            "skipped_charts": skipped
         }))
 
     except Exception as e:
@@ -256,4 +304,3 @@ def main():
 
 if __name__ == "__main__":
     main()
- 
