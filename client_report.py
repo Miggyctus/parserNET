@@ -184,7 +184,8 @@ def build_section_prompt(section, csv_data, reference):
     - Only generate THIS section
     - Do NOT generate other sections
     - Use telemetry data strictly
-    - Insert chart placeholders when relevant
+    - Insert chart placeholders only when needed, following the naming rules
+    - NEVER reuse the same chart_identifier across sections 
     - No repetition of charts across sections
 
     === DATA ===
