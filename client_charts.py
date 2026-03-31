@@ -22,7 +22,7 @@ OUTPUT_JSON = "output/json/llm_output.json"
 client = OpenAI(
     base_url=BASE_URL,
     api_key="lm-studio",
-    http_client=httpx.Client(timeout=600.0)
+    http_client=httpx.Client(timeout=900.0)
 )
 
 # =========================
@@ -164,8 +164,8 @@ OUTPUT (raw JSON only):
     completion = client.chat.completions.create(
         model=MODEL_ID,
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.9,
-        top_p=1.0,
+        temperature=0.8,
+        top_p=0.9,
         max_tokens=10000,
         n=1
     )

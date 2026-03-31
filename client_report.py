@@ -20,7 +20,7 @@ CSV_FOLDER = "input_csv"
 client = OpenAI(
     base_url=BASE_URL,
     api_key="lm-studio",
-    http_client=httpx.Client(timeout=900.0)
+    http_client=httpx.Client(timeout=9999.0)
 )
 
 SECTIONS = [
@@ -46,7 +46,7 @@ SECTION_TOKEN_LIMITS = {
     "RESUMEN EJECUTIVO": 3000,
     "OBJECTIVOS Y ALCANCE": 2500,
     "ACTIVOS ANALIZADOS": 5000,
-    "ANALISIS ESTADISTICO DE EVENTOS": 6000,
+    "ANALISIS ESTADISTICO DE EVENTOS": 8000,
     "HALLAZGOS DETALLADOS Y MAPEO MITRE ATT&CK": 8000,
     "ANALISIS  DE TRAFICO DE SALIDA": 5000,
     "ANALISIS DE ACTIVIDAD LINUX Y LINEA DE COMANDOS": 6000,
