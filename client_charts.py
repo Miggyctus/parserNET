@@ -137,26 +137,20 @@ def ask_llm(placeholders, csv_data):
     prompt = f"""
 TASK: Generate chart JSON for the following placeholders.
 
-════════════════════════════════════════
 REQUESTED CHART PLACEHOLDERS ({len(placeholders)} total)
-════════════════════════════════════════
 {placeholder_list}
 
-════════════════════════════════════════
 CSV DATA
-════════════════════════════════════════
 {json.dumps(csv_data, indent=2)}
-════════════════════════════════════════
 EXECUTION CHECKLIST
-════════════════════════════════════════
-□ Every placeholder in the list above has an entry in output.charts
-□ chart_identifier matches the placeholder EXACTLY
-□ No extra charts beyond the list above
-□ event_count values are numeric
-□ Max 10 datapoints per chart
-□ No markdown
-□ No explanation
-□ No <tool_call> blocks
+ Every placeholder in the list above has an entry in output.charts
+ chart_identifier matches the placeholder EXACTLY
+ No extra charts beyond the list above
+ event_count values are numeric
+ Max 10 datapoints per chart
+ No markdown
+ No explanation
+No <tool_call> blocks
 
 OUTPUT (raw JSON only):
 """
