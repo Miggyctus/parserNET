@@ -141,7 +141,7 @@ REQUESTED CHART PLACEHOLDERS ({len(placeholders)} total)
 {placeholder_list}
 
 CSV DATA
-{json.dumps(csv_data, indent=2)}
+{json.dumps(csv_data, separators=(',', ':'))}
 EXECUTION CHECKLIST
  Every placeholder in the list above has an entry in output.charts
  chart_identifier matches the placeholder EXACTLY
@@ -158,7 +158,7 @@ OUTPUT (raw JSON only):
     completion = client.chat.completions.create(
         model=MODEL_ID,
         messages=[{"role": "user", "content": prompt}],
-        temperature=0.5,
+        temperature=0.7,
         top_p=0.9,
         max_tokens=10000,
         n=1
