@@ -18,6 +18,7 @@ BACKEND_URL = "http://localhost:8000/execute"
 REPORT_PATH = "output/reports/llm_report.txt"
 SUMMARY_PATH = "output/json/csv_summary.json"
 OUTPUT_JSON = "output/json/llm_output.json"
+PROMPT_CHART_FILE = "prompt_chart.json"
 
 client = OpenAI(
     base_url=BASE_URL,
@@ -108,6 +109,54 @@ def load_summary():
     with open(SUMMARY_PATH, "r", encoding="utf-8") as f:
         return json.load(f)
 
+
+def load_chart_prompt():
+    if not os.path.exists(PROMPT_CHART_FILE):
+        raise RuntimeError("Chart prompt file not found")
+
+    with open(PROMPT_CHART_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)["system_prompt"]
+
+
+def is_numeric_value(value):
+    if value is None:
+        return False
+    try:
+        float(value)
+        return True
+    except (TypeError, ValueError):
+        return False
+
+
+def summarize_csv_data(csv_data, max_samples=5):
+    summary = {}
+
+    for filename, rows in csv_data.items():
+        columns = []
+        sample_values = {}
+        numeric_columns = set()
+
+        if rows:
+            columns = list(rows[0].keys())
+            for row in rows[:max_samples]:
+                for key, value in row.items():
+                    if key not in sample_values:
+                        sample_values[key] = []
+                    if len(sample_values[key]) < max_samples:
+                        sample_values[key].append(value)
+                    if is_numeric_value(value):
+                        numeric_columns.add(key)
+
+        summary[filename] = {
+            "row_count": len(rows),
+            "columns": columns,
+            "numeric_columns": sorted(list(numeric_columns)),
+            "sample_values": sample_values
+        }
+
+    return summary
+
+
 def load_all_csv(folder = "input_csv", max_rows_per_file = 5000):
     data = {}
     for file in os.listdir(folder):
@@ -130,9 +179,11 @@ def load_all_csv(folder = "input_csv", max_rows_per_file = 5000):
 
 def ask_llm(placeholders, csv_data):
 
+    chart_prompt = load_chart_prompt()
     placeholder_list = "\n".join(
         [f"{i+1}. {p}" for i, p in enumerate(placeholders)]
     )
+    csv_summary = summarize_csv_data(csv_data)
 
     prompt = f"""
 TASK: Generate chart JSON for the following placeholders.
@@ -140,24 +191,31 @@ TASK: Generate chart JSON for the following placeholders.
 REQUESTED CHART PLACEHOLDERS ({len(placeholders)} total)
 {placeholder_list}
 
-CSV DATA
-{json.dumps(csv_data, separators=(',', ':'))}
-EXECUTION CHECKLIST
- Every placeholder in the list above has an entry in output.charts
- chart_identifier matches the placeholder EXACTLY
- No extra charts beyond the list above
- event_count values are numeric
- Max 10 datapoints per chart
- No markdown
- No explanation
-No <tool_call> blocks
+CSV SUMMARY
+{json.dumps(csv_data, indent=2, ensure_ascii=False)}
+
+INSTRUCTIONS
+- Use ONLY the fields and rows available in the CSV summary above.
+- If a requested placeholder cannot be built from the data provided, return the chart object with:
+  "data": [],
+  "chart_type": "bar",
+  "status": "no_data_available"
+- Do NOT invent fields or data.
+- Do NOT guess column names that are not present.
+- If a placeholder can be satisfied, include at least "chart_type", "title", and "data" for that placeholder.
+- Each chart_identifier must match the exact placeholder name.
+- Do NOT include any extra charts beyond the requested list.
+- No markdown, no explanation, no code fences, no <tool_call> blocks.
 
 OUTPUT (raw JSON only):
 """
 
     completion = client.chat.completions.create(
         model=MODEL_ID,
-        messages=[{"role": "user", "content": prompt}],
+        messages=[
+            {"role": "system", "content": chart_prompt},
+            {"role": "user", "content": prompt}
+        ],
         temperature=0.7,
         top_p=0.9,
         max_tokens=10000,
