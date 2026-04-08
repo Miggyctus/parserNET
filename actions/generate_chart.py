@@ -36,10 +36,11 @@ def safe_load_json(path):
 
 def normalize_chart_data(chart):
     """
-    Normalizes chart data regardless of whether the model used
-    'data' or 'data_points' as the key, and regardless of whether
-    the value field is called 'event_count' or 'value'.
-    Returns the chart dict with a guaranteed 'data' key.
+    Normalizes chart data regardless of structure:
+    - Accepts 'data' or 'data_points' keys
+    - Auto-detects numeric fields (event_count, value, count, risk_level, etc)
+    - Normalizes label fields (label, name, category, user_name, group_name, etc)
+    Returns the chart dict with a guaranteed 'data' key standardized to 'event_count'.
     """
 
     # prefer 'data' if it's already populated
@@ -53,27 +54,68 @@ def normalize_chart_data(chart):
         chart["data"] = []
         return chart
 
-    # normalize value field: accept 'event_count' or 'value'
+    # Auto-detect label and value field names
+    label_fields = ["label", "name", "category", "user_name", "user_origin", 
+                   "group_name", "domain", "source", "event_type", "status",
+                   "user_impacted", "date", "evid", "action", "protocol",
+                   "ip", "destination", "field"]
+    
+    value_fields = ["event_count", "value", "count", "risk_level", "events",
+                   "frequency", "occurrences", "volume", "total"]
+
     normalized = []
     for row in data:
         if not isinstance(row, dict):
             continue
 
-        label = row.get("label") or row.get("name") or row.get("category") or ""
-        value = row.get("event_count") or row.get("value") or row.get("count") or 0
+        # Find label: try each label field in order
+        label = ""
+        for field in label_fields:
+            if field in row:
+                label = str(row[field])
+                break
+        
+        # If no label found, use first non-numeric key
+        if not label:
+            for key, val in row.items():
+                try:
+                    float(val)
+                except (TypeError, ValueError):
+                    label = str(val)
+                    break
 
-        try:
-            value = float(value)
-        except (TypeError, ValueError):
-            value = 0
+        # Find numeric value: try each value field in order
+        value = 0
+        for field in value_fields:
+            if field in row:
+                try:
+                    value = float(row[field])
+                    break
+                except (TypeError, ValueError):
+                    continue
+        
+        # If no value found, try any numeric field
+        if value == 0:
+            for key, val in row.items():
+                if key not in label_fields:
+                    try:
+                        value = float(val)
+                        break
+                    except (TypeError, ValueError):
+                        continue
 
-        normalized.append({"label": str(label), "event_count": value})
+        normalized.append({"label": label, "event_count": value})
 
     chart["data"] = normalized
     return chart
 
 
 def validate_chart_structure(chart):
+    """Check if chart has data and is not marked as unavailable"""
+    # Check for no_data_available status
+    if chart.get("status") == "no_data_available":
+        return False
+    
     if "data" not in chart:
         return False
 
@@ -127,11 +169,19 @@ def render_chart(chart_id, chart):
     if chart_type not in SUPPORTED_CHARTS:
         chart_type = "bar"
 
-    # sort descending
-    try:
-        df = df.sort_values("event_count", ascending=False)
-    except Exception:
-        pass
+    # sort descending by value, unless it's a line/area chart with potential temporal data
+    if chart_type in ["line", "area"]:
+        # For temporal charts, try to sort by dimension if it looks like dates
+        try:
+            pd.to_datetime(df[dimension_col])
+            df = df.sort_values(dimension_col)
+        except (ValueError, TypeError):
+            df = df.sort_values("event_count", ascending=False)
+    else:
+        try:
+            df = df.sort_values("event_count", ascending=False)
+        except Exception:
+            pass
 
     # =========================
     # ENTERPRISE DARK THEME
@@ -223,8 +273,9 @@ def render_chart(chart_id, chart):
         # =========================
         # Title & Labels
         # =========================
+        title = chart.get("title", chart_id.replace("_", " ").title())
         ax.set_title(
-            chart_id.replace("_", " ").title(),
+            title,
             fontsize=16,
             color="white",
             pad=20,

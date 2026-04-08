@@ -192,7 +192,7 @@ REQUESTED CHART PLACEHOLDERS ({len(placeholders)} total)
 {placeholder_list}
 
 CSV SUMMARY
-{json.dumps(csv_data, indent=2, ensure_ascii=False)}
+{json.dumps(csv_summary, indent=2, ensure_ascii=False)}
 
 INSTRUCTIONS
 - Use ONLY the fields and rows available in the CSV summary above.
