@@ -206,8 +206,8 @@ def generate_section(section, system_prompt, csv_data, reference):
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt}
         ],
-        temperature=0.5,
-        top_p=0.9,
+        temperature=0.4,
+        top_p=0.85,
         max_tokens=maxTokens,
     )
     message = completion.choices[0].message
