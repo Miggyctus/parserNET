@@ -12,7 +12,7 @@ from contextlib import contextmanager
 # =========================
 
 BASE_URL = "http://localhost:1234/v1"
-MODEL_ID = "glm-4.7-flash-claude-opus-4.5-high-reasoning-distilld"
+MODEL_ID = "qwen/qwq-32b"
 BACKEND_URL = "http://localhost:8000/execute"
 
 REPORT_PATH = "output/reports/llm_report.txt"
