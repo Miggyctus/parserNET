@@ -195,27 +195,29 @@ CSV SUMMARY
 {json.dumps(csv_data, indent=2, ensure_ascii=False)}
 
 INSTRUCTIONS
+
 - Use ONLY the fields and rows available in the CSV summary above.
-- If a requested placeholder cannot be built from the data provided, return the chart object with:
-  "data": [],
-  "chart_type": "bar",
-  "status": "no_data_available"
-- Do NOT invent fields or data.
-- Do NOT guess column names that are not present.
-- If a placeholder can be satisfied, include at least "chart_type", "title", and "data" for that placeholder.
+- You MUST map placeholders to available columns using semantic similarity.
+
+MAPPING RULES:
+- You ARE REQUIRED to infer mappings between placeholder names and column names.
+- You ARE ALLOWED to normalize and interpret fields.
+- You ARE ALLOWED to extract values from composite fields (e.g., parsing "Object Name").
+- You ARE ALLOWED to perform basic transformations (grouping, counting, splitting strings).
+
+IMPORTANT:
+- "Infer" and "guess" are considered equivalent in this context and are ALLOWED.
+- Do NOT require exact column name matches.
+- Prefer best-effort mapping over returning empty data.
+
+FAILURE CONDITION:
+- ONLY return "no_data_available" if there is absolutely NO possible way to derive the requested metric from any field.
+
+OUTPUT RULES:
 - Each chart_identifier must match the exact placeholder name.
-- Do NOT include any extra charts beyond the requested list.
-- No markdown, no explanation, no code fences, no <tool_call> blocks.
-You MUST map placeholders to the closest matching columns using semantic similarity.
-
-You are allowed to:
-- Infer mappings between placeholder names and column names
-- Use approximate matches (e.g., "host" = "hostname")
-- Normalize naming differences
-
-You MUST NOT return no_data_available unless absolutely no reasonable mapping exists.
-
-OUTPUT (raw JSON only):
+- Do NOT include extra charts.
+- Output raw JSON only.
+- No explanations, no markdown.
 """
 
     completion = client.chat.completions.create(
