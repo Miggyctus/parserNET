@@ -206,6 +206,17 @@ INSTRUCTIONS
 - Each chart_identifier must match the exact placeholder name.
 - Do NOT include any extra charts beyond the requested list.
 - No markdown, no explanation, no code fences, no <tool_call> blocks.
+You MUST map placeholder names to available CSV columns using semantic similarity.
+
+Examples:
+- "eventos_tipo" → event_type
+- "hosts" → host or hostname
+- "usuarios" → username or user
+- "hora" → timestamp
+- "dominio" → domain
+
+If a close semantic match exists, you MUST use it.
+Do NOT require exact column name match.
 
 OUTPUT (raw JSON only):
 """
