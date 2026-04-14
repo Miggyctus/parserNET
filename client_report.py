@@ -71,7 +71,7 @@ def load_model():
 
     payload = {
         "model": MODEL_ID,
-        "context_length": 40000,
+        "context_length": 48000,
         "eval_batch_size": 256,
         "offload_kv_cache_to_gpu": True,
         "echo_load_config": True
