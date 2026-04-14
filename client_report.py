@@ -187,9 +187,6 @@ def build_section_prompt(section, csv_data, reference):
     - Insert chart placeholders only when needed, following the naming rules
     - NEVER reuse the same chart_identifier across sections 
     - No repetition of charts across sections
-    - DO NOT include reasoning, thinking, analysis narration
-    - DO NOT explain your thought process
-    - WRITE ONLY final report content
 
     === DATA ===
     {json.dumps(csv_data, indent=2)}
