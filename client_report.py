@@ -11,7 +11,7 @@ import fitz
 # =========================
 
 BASE_URL = "http://localhost:1234/v1"
-MODEL_ID = "qwen/qwq-32b"
+MODEL_ID = "openai/gpt-oss-20b"
 PROMPT_FILE = "prompt_report.json"
 CHART_JSON_PATH = "output/json/llm_output.json"
 REPORT_TEXT_PATH = "output/reports/llm_report.txt"
