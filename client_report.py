@@ -189,7 +189,7 @@ def build_section_prompt(section, csv_data, reference):
     - No repetition of charts across sections
 
     === DATA ===
-    {json.dumps(csv_data, indent=2)}
+    {json.dumps(csv_data, separators=(',', ':', ';'))}
 
     === STYLE REFERENCE ===
     {reference}
@@ -245,74 +245,6 @@ def assemble_report(sections_content):
         report.append(f"\n\n {titles.get(key, section)}\n\n{content}")
 
     return "\n".join(report)
-
-def ask_llm(system_prompt: str, chart_data: dict, csv_data: dict):
-
-    referenceReport= load_reference_report()
-    completion = client.chat.completions.create(
-        model=MODEL_ID,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {
-                "role": "user",
-                "content": f"""
-You are provided with:
-
-[1] PRIMARY — RAW CSV (analysis, evidence, findings)
-Every finding MUST cite: exact field | real value | timestamp
-
-[2] REFERENCE — EXAMPLE REPORT (tone and style only)
-DO NOT TRY TO CORRELATE TO THE REFERENCE REPORT. It is just a stylistic example.
-NEVER reuse its content, incidents, conclusions, or data.
-PROHIBITED to copy: incidents, IPs, users, hostnames, dates, conclusions
-
-Chart placeholders {{{{CHART: chart_identifier}}}} ARE PART OF THE REPORT.
-
-They must be inserted DURING writing, not appended at the end.
-
-WHEN to insert a placeholder:
-Immediately AFTER the paragraph describing a distribution or trend
-Whenever you mention: "distribution of...", "top N of...", "trend of...",
-"volume of...", "comparison between...", "frequency of..."
-
-Once per unique statistical analysis — never repeat the same one
-
-HOW to name the chart_identifier:
-
-Lowercase, letters/numbers/underscores only
-Must reflect EXACTLY the metric analyzed in that paragraph
-
-MINIMUM TOTAL PLACEHOLDERS IN REPORT: 8
-
-MAXIMUM TOTAL: 20
-
-ABSOLUTE RULE: no chart_identifier may ever be repeated in the entire report
-You must analyze the raw CSV data directly.
-
-Use the reference report ONLY as a stylistic and structural guide.
-Do NOT reuse its incidents, conclusions, or content.
-
-{referenceReport}
-
-=== RAW CSV FILES ===
-{json.dumps(csv_data, indent=2)}
-
-Generate the full SOC report using the telemetry data.
-The report must be AT LEAST 12000 words.
-Do not stop early.
-Continue writing until all sections are deeply elaborated.
-Follow the writing style, tone, and structure of the reference report,
-but base ALL analysis strictly on the telemetry provided.
-"""
-            }
-        ],
-        temperature=0.4,
-        top_p=0.9,
-        max_tokens=25000,
-    )
-    message = completion.choices[0].message
-
-    return message.content
 
 
 # =========================
