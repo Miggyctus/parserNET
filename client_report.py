@@ -189,7 +189,7 @@ def build_section_prompt(section, csv_data, reference):
     - No repetition of charts across sections
 
     === DATA ===
-    {json.dumps(csv_data, separators=(',', ':', ';'))}
+    {json.dumps(csv_data, separators=(',', ':'))}
 
     === STYLE REFERENCE ===
     {reference}
