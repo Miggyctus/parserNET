@@ -150,7 +150,7 @@ def load_all_csv(folder = "input_csv", max_rows_per_file = 5000):
 # LLM CALL — procesado en lotes para evitar saturar el contexto
 # =========================
 
-BATCH_SIZE = 5  # procesar N placeholders por llamada al LLM
+BATCH_SIZE = 3  # procesar N placeholders por llamada al LLM
 
 
 def ask_llm(placeholders, csv_data):
