@@ -210,9 +210,9 @@ def ask_llm_batch(placeholders_batch, csv_summary, chart_prompt):
     # listar las columnas disponibles de forma explícita para ayudar al modelo
     available_columns_summary = []
     for filename, info in csv_summary.items():
-        cols = ", ".join(info.get("columns", []))
+        cols = ", ".join(c for c in info.get("columns", []) if c is not None)
         row_count = info.get("row_count", 0)
-        numeric_cols = ", ".join(info.get("numeric_columns", []))
+        numeric_cols = ", ".join(c for c in info.get("numeric_columns", []) if c is not None)
         available_columns_summary.append(
             f"- {filename} ({row_count} filas): columnas=[{cols}] | numéricas=[{numeric_cols}]"
         )
@@ -221,19 +221,24 @@ def ask_llm_batch(placeholders_batch, csv_summary, chart_prompt):
     prompt = f"""
 TASK: Generate chart JSON for ALL {len(placeholders_batch)} placeholders listed below.
 
+══════════════════════════════════
 AVAILABLE COLUMNS IN CSV DATA
-
+══════════════════════════════════
 {columns_text}
 
+══════════════════════════════════
 REQUESTED CHART PLACEHOLDERS ({len(placeholders_batch)} total — ALL are REQUIRED)
-
+══════════════════════════════════
 {placeholder_list}
 
+══════════════════════════════════
 CSV SAMPLE DATA (for value reference)
-
+══════════════════════════════════
 {json.dumps(csv_summary, indent=2, ensure_ascii=False)}
 
+══════════════════════════════════
 CRITICAL MAPPING INSTRUCTIONS
+══════════════════════════════════
 - You MUST produce a chart entry for ALL {len(placeholders_batch)} placeholders above.
 - "no_data_available" is FORBIDDEN unless no CSV file has any columns at all.
 - You MUST use semantic inference: placeholder "top_usuarios" maps to any user/account column.
