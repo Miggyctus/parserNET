@@ -194,7 +194,7 @@ def ask_llm(placeholders, csv_data):
     # procesar en lotes para evitar que el modelo se rinda por contexto largo
     for batch_start in range(0, len(placeholders), BATCH_SIZE):
         batch = placeholders[batch_start:batch_start + BATCH_SIZE]
-        batch_result = ask_llm_batch(batch, csv_data, chart_prompt)
+        batch_result = ask_llm_batch(batch, csv_summary, chart_prompt)
         charts = batch_result.get("charts", {})
         all_charts.update(charts)
 
@@ -234,7 +234,6 @@ CSV SAMPLE DATA (for value reference)
 {json.dumps(csv_summary, indent=2, ensure_ascii=False)}
 
 CRITICAL MAPPING INSTRUCTIONS
-
 - You MUST produce a chart entry for ALL {len(placeholders_batch)} placeholders above.
 - "no_data_available" is FORBIDDEN unless no CSV file has any columns at all.
 - You MUST use semantic inference: placeholder "top_usuarios" maps to any user/account column.
