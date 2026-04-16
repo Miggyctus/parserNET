@@ -208,9 +208,9 @@ OUTPUT: raw JSON only.
             {"role": "system", "content": chart_prompt},
             {"role": "user", "content": prompt}
         ],
-        temperature=0.3,
+        temperature=0.6,
         top_p=0.9,
-        max_tokens=10000,
+        max_tokens=2000,
         n=1
     )
 
