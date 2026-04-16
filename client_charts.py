@@ -195,6 +195,7 @@ CRITICAL INSTRUCTIONS
 - You MUST map placeholders using semantic similarity.
 - You MUST parse structured fields if needed (e.g. "Object Name").
 - You MUST generate REAL data.
+- Do NOT try to SAVE time, go DEEP into the data and generate as much REAL data as possible.
 
 - "no_data_available" is FORBIDDEN unless absolutely impossible.
 
