@@ -12,7 +12,7 @@ from contextlib import contextmanager
 # =========================
 
 BASE_URL = "http://localhost:1234/v1"
-MODEL_ID = "qwen/qwq-32b"
+MODEL_ID = "qwen2.5-72b-instruct"
 BACKEND_URL = "http://localhost:8000/execute"
 
 REPORT_PATH = "output/reports/llm_report.txt"
@@ -38,7 +38,7 @@ def load_model():
 
     payload = {
         "model": MODEL_ID,
-        "context_length": 30000,
+        "context_length": 45000,
         "eval_batch_size": 256,
         "flash_attention": True,
         "offload_kv_cache_to_gpu": True,
@@ -175,28 +175,24 @@ def ask_llm_batch(placeholders_batch, csv_data, chart_prompt):
     )
 
     prompt = f"""
-TASK: Generate chart JSON for ALL {len(placeholders_batch)} placeholders listed below.
+Generate chart JSON for ALL {len(placeholders_batch)} placeholders listed below.
 
-══════════════════════════════════
 REQUESTED CHART PLACEHOLDERS
-══════════════════════════════════
+
 {placeholder_list}
 
-══════════════════════════════════
 FULL CSV DATA (USE THIS DATA)
-══════════════════════════════════
+
 {json.dumps(csv_data, separators=(",", ":"), ensure_ascii=False)}
 
-══════════════════════════════════
 CRITICAL INSTRUCTIONS
-══════════════════════════════════
+
 - You MUST use the CSV data above.
 - You MUST extract, group, count, and transform data as needed.
 - You MUST map placeholders using semantic similarity.
 - You MUST parse structured fields if needed (e.g. "Object Name").
 - You MUST generate REAL data.
 - Do NOT try to SAVE time, go DEEP into the data and generate as much REAL data as possible.
-
 - "no_data_available" is FORBIDDEN unless absolutely impossible.
 
 OUTPUT: raw JSON only.
@@ -208,8 +204,8 @@ OUTPUT: raw JSON only.
             {"role": "system", "content": chart_prompt},
             {"role": "user", "content": prompt}
         ],
-        temperature=0.6,
-        top_p=0.9,
+        temperature=0.8,
+        top_p=0.85,
         max_tokens=2000,
         #reasoning={"effort" : "low"}
     )
