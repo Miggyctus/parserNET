@@ -211,7 +211,7 @@ OUTPUT: raw JSON only.
         temperature=0.6,
         top_p=0.9,
         max_tokens=2000,
-        reasoning={"effort" : "low"}
+        #reasoning={"effort" : "low"}
     )
 
     raw = completion.choices[0].message.content
