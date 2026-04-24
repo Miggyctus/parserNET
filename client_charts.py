@@ -187,13 +187,14 @@ FULL CSV DATA (USE THIS DATA)
 
 CRITICAL INSTRUCTIONS
 
-- You MUST use the CSV data above.
-- You MUST extract, group, count, and transform data as needed.
-- You MUST map placeholders using semantic similarity.
-- You MUST parse structured fields if needed (e.g. "Object Name").
+- You MUST strictly use the CSV data.
+- You MUST aggregate, count, and group data correctly.
 - You MUST generate REAL data.
-- Do NOT try to SAVE time, go DEEP into the data and generate as much REAL data as possible.
-- "no_data_available" is FORBIDDEN unless absolutely impossible.
+- Maximum 10 items per chart.
+- Labels MUST be SHORT (max 30 chars).
+- Sort all charts DESC by event_count.
+- Do NOT generate empty charts unless absolutely necessary.
+- Do NOT hallucinate data.
 
 OUTPUT: raw JSON only.
 """
