@@ -20,10 +20,9 @@ def extract_labels_values(data):
     return labels, values
 
 
-def build_chart_html(chart_id, chart):
+def build_dashboard_chart(chart_id, chart):
     import json
 
-    chart_type = chart.get("chart_type", "bar").lower()
     data = chart.get("data", [])
 
     labels = []
@@ -34,13 +33,8 @@ def build_chart_html(chart_id, chart):
         labels.append(str(item[key])[:20])
         values.append(item["event_count"])
 
-    js_type = "bar"
-    index_axis = "x"
-
-    if chart_type == "horizontal_bar":
-        index_axis = "y"
-    elif chart_type == "pie":
-        js_type = "pie"
+    total = sum(values)
+    unique = len(values)
 
     return f"""
     <html>
@@ -50,95 +44,112 @@ def build_chart_html(chart_id, chart):
         <style>
             body {{
                 margin: 0;
-                background: linear-gradient(135deg, #020617, #0f172a);
+                background: #020617;
                 font-family: 'Segoe UI', sans-serif;
+                color: white;
                 display: flex;
                 justify-content: center;
                 align-items: center;
                 height: 100vh;
-                color: white;
             }}
 
-            .card {{
-                width: 900px;
+            .container {{
+                width: 950px;
+                border-radius: 20px;
                 padding: 25px;
-                border-radius: 16px;
-                background: rgba(15, 23, 42, 0.9);
-                box-shadow: 0 10px 40px rgba(0,0,0,0.6);
-                backdrop-filter: blur(10px);
+                background: linear-gradient(180deg, #020617, #020617);
+                box-shadow: 0 0 40px rgba(0, 140, 255, 0.15);
+                border: 1px solid rgba(0, 140, 255, 0.2);
             }}
 
             .title {{
+                text-align: center;
                 font-size: 20px;
                 font-weight: 600;
-                margin-bottom: 15px;
+                letter-spacing: 1px;
+            }}
+
+            .subtitle {{
                 text-align: center;
-                letter-spacing: 0.5px;
+                font-size: 12px;
+                color: #3b82f6;
+                margin-bottom: 20px;
+            }}
+
+            .metrics {{
+                display: flex;
+                justify-content: center;
+                gap: 20px;
+                margin-bottom: 20px;
+            }}
+
+            .metric-box {{
+                border: 1px solid rgba(59,130,246,0.3);
+                padding: 10px 20px;
+                border-radius: 10px;
+                text-align: center;
+                min-width: 150px;
+            }}
+
+            .metric-value {{
+                font-size: 22px;
+                font-weight: bold;
+                color: #3b82f6;
             }}
 
             canvas {{
-                max-height: 400px;
+                height: 350px !important;
             }}
         </style>
     </head>
 
     <body>
-        <div class="card">
-            <div class="title">{chart_id.replace("_", " ").title()}</div>
+        <div class="container">
+            <div class="title">{chart_id.replace("_", " ").upper()}</div>
+            <div class="subtitle">DISTRIBUCIÓN POR USUARIO</div>
+
+            <div class="metrics">
+                <div class="metric-box">
+                    <div>Total de eventos</div>
+                    <div class="metric-value">{total}</div>
+                </div>
+
+                <div class="metric-box">
+                    <div>Usuarios únicos</div>
+                    <div class="metric-value">{unique}</div>
+                </div>
+            </div>
+
             <canvas id="chart"></canvas>
         </div>
 
         <script>
-            const ctx = document.getElementById('chart').getContext('2d');
+            const ctx = document.getElementById('chart');
 
             new Chart(ctx, {{
-                type: '{js_type}',
+                type: 'bar',
                 data: {{
                     labels: {json.dumps(labels)},
                     datasets: [{{
-                        label: 'Eventos',
                         data: {json.dumps(values)},
                         backgroundColor: [
-                            '#3b82f6','#22c55e','#ef4444','#f59e0b',
-                            '#a855f7','#06b6d4','#e11d48','#84cc16'
+                            '#3b82f6','#22c55e','#ef4444','#f59e0b'
                         ],
-                        borderRadius: 6,
-                        borderSkipped: false
+                        borderRadius: 8
                     }}]
                 }},
                 options: {{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    indexAxis: '{index_axis}',
-
                     plugins: {{
-                        legend: {{
-                            display: {str(js_type == "pie").lower()},
-                            labels: {{
-                                color: 'white',
-                                font: {{ size: 12 }}
-                            }}
-                        }}
+                        legend: {{ display: false }}
                     }},
-
                     scales: {{
                         x: {{
-                            ticks: {{
-                                color: 'white',
-                                font: {{ size: 11 }}
-                            }},
-                            grid: {{
-                                color: 'rgba(255,255,255,0.05)'
-                            }}
+                            ticks: {{ color: 'white' }},
+                            grid: {{ color: 'rgba(255,255,255,0.05)' }}
                         }},
                         y: {{
-                            ticks: {{
-                                color: 'white',
-                                font: {{ size: 11 }}
-                            }},
-                            grid: {{
-                                color: 'rgba(255,255,255,0.05)'
-                            }}
+                            ticks: {{ color: 'white' }},
+                            grid: {{ color: 'rgba(255,255,255,0.05)' }}
                         }}
                     }}
                 }}

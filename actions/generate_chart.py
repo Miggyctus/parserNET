@@ -2,7 +2,7 @@
 import json
 import os
 
-from chart_engine.html_builder import build_chart_html
+from chart_engine.html_builder import build_dashboard_chart
 from chart_engine.renderer import render_html_to_png
 
 JSON_PATH = "output/json/llm_output.json"
@@ -52,7 +52,7 @@ def main():
 
     for chart_id, chart in charts.items():
         try:
-            html = build_chart_html(chart_id, chart)
+            html = build_dashboard_chart(chart_id, chart)
 
             output_path = f"{OUTPUT_DIR}/{chart_id}.png"
 
