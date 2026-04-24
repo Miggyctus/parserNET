@@ -21,17 +21,23 @@ def extract_labels_values(data):
 
 
 def build_chart_html(chart_id, chart):
+    import json
+
     chart_type = chart.get("chart_type", "bar").lower()
     data = chart.get("data", [])
 
-    labels, values = extract_labels_values(data)
+    labels = []
+    values = []
 
-    # Map types
+    for item in data:
+        key = [k for k in item.keys() if k != "event_count"][0]
+        labels.append(str(item[key])[:20])
+        values.append(item["event_count"])
+
     js_type = "bar"
     index_axis = "x"
 
     if chart_type == "horizontal_bar":
-        js_type = "bar"
         index_axis = "y"
     elif chart_type == "pie":
         js_type = "pie"
@@ -40,64 +46,99 @@ def build_chart_html(chart_id, chart):
     <html>
     <head>
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
         <style>
             body {{
                 margin: 0;
-                background: #0f172a;
-                font-family: Arial;
+                background: linear-gradient(135deg, #020617, #0f172a);
+                font-family: 'Segoe UI', sans-serif;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
                 color: white;
             }}
 
-            .container {{
+            .card {{
                 width: 900px;
-                height: 500px;
-                padding: 20px;
+                padding: 25px;
+                border-radius: 16px;
+                background: rgba(15, 23, 42, 0.9);
+                box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+                backdrop-filter: blur(10px);
             }}
 
-            h2 {{
+            .title {{
+                font-size: 20px;
+                font-weight: 600;
+                margin-bottom: 15px;
                 text-align: center;
-                font-size: 18px;
-                margin-bottom: 10px;
+                letter-spacing: 0.5px;
+            }}
+
+            canvas {{
+                max-height: 400px;
             }}
         </style>
     </head>
 
     <body>
-        <div class="container">
-            <h2>{chart_id.replace("_", " ").title()}</h2>
+        <div class="card">
+            <div class="title">{chart_id.replace("_", " ").title()}</div>
             <canvas id="chart"></canvas>
         </div>
 
         <script>
-            const ctx = document.getElementById('chart');
+            const ctx = document.getElementById('chart').getContext('2d');
 
             new Chart(ctx, {{
                 type: '{js_type}',
                 data: {{
                     labels: {json.dumps(labels)},
                     datasets: [{{
-                        label: '{chart_id}',
+                        label: 'Eventos',
                         data: {json.dumps(values)},
                         backgroundColor: [
                             '#3b82f6','#22c55e','#ef4444','#f59e0b',
-                            '#a855f7','#14b8a6','#e11d48','#84cc16'
-                        ]
+                            '#a855f7','#06b6d4','#e11d48','#84cc16'
+                        ],
+                        borderRadius: 6,
+                        borderSkipped: false
                     }}]
                 }},
                 options: {{
-                    responsive: false,
+                    responsive: true,
+                    maintainAspectRatio: false,
                     indexAxis: '{index_axis}',
+
                     plugins: {{
                         legend: {{
-                            labels: {{ color: 'white' }}
+                            display: {str(js_type == "pie").lower()},
+                            labels: {{
+                                color: 'white',
+                                font: {{ size: 12 }}
+                            }}
                         }}
                     }},
+
                     scales: {{
                         x: {{
-                            ticks: {{ color: 'white' }}
+                            ticks: {{
+                                color: 'white',
+                                font: {{ size: 11 }}
+                            }},
+                            grid: {{
+                                color: 'rgba(255,255,255,0.05)'
+                            }}
                         }},
                         y: {{
-                            ticks: {{ color: 'white' }}
+                            ticks: {{
+                                color: 'white',
+                                font: {{ size: 11 }}
+                            }},
+                            grid: {{
+                                color: 'rgba(255,255,255,0.05)'
+                            }}
                         }}
                     }}
                 }}
