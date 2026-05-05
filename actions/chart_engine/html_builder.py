@@ -19,10 +19,10 @@ def extract_labels_values(data):
 
     return labels, values
 
-
 def build_dashboard_chart(chart_id, chart):
     import json
 
+    chart_type = chart.get("chart_type", "bar")
     data = chart.get("data", [])
 
     labels = []
@@ -30,11 +30,44 @@ def build_dashboard_chart(chart_id, chart):
 
     for item in data:
         key = [k for k in item.keys() if k != "event_count"][0]
-        labels.append(str(item[key])[:20])
+
+        if key == "timestamp":
+            labels.append(item[key])
+        else:
+            labels.append(str(item[key])[:20])
+
         values.append(item["event_count"])
 
     total = sum(values)
     unique = len(values)
+
+    # ===== DETECT TYPE =====
+    js_type = "bar"
+    index_axis = "x"
+    extra_options = ""
+
+    if chart_type == "horizontal_bar":
+        js_type = "bar"
+        index_axis = "y"
+
+    elif chart_type == "pie":
+        js_type = "pie"
+
+    elif chart_type == "line":
+        js_type = "line"
+        extra_options = """
+        tension: 0.3,
+        fill: true,
+        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(59,130,246,0.2)',
+        pointRadius: 3
+        """
+
+    # ===== COLORS =====
+    colors = [
+        '#3b82f6','#22c55e','#ef4444','#f59e0b',
+        '#a855f7','#06b6d4','#e11d48','#84cc16'
+    ]
 
     return f"""
     <html>
@@ -57,7 +90,7 @@ def build_dashboard_chart(chart_id, chart):
                 width: 950px;
                 border-radius: 20px;
                 padding: 25px;
-                background: linear-gradient(180deg, #020617, #020617);
+                background: #020617;
                 box-shadow: 0 0 40px rgba(0, 140, 255, 0.15);
                 border: 1px solid rgba(0, 140, 255, 0.2);
             }}
@@ -66,14 +99,6 @@ def build_dashboard_chart(chart_id, chart):
                 text-align: center;
                 font-size: 20px;
                 font-weight: 600;
-                letter-spacing: 1px;
-            }}
-
-            .subtitle {{
-                text-align: center;
-                font-size: 12px;
-                color: #3b82f6;
-                margin-bottom: 20px;
             }}
 
             .metrics {{
@@ -88,7 +113,6 @@ def build_dashboard_chart(chart_id, chart):
                 padding: 10px 20px;
                 border-radius: 10px;
                 text-align: center;
-                min-width: 150px;
             }}
 
             .metric-value {{
@@ -106,16 +130,15 @@ def build_dashboard_chart(chart_id, chart):
     <body>
         <div class="container">
             <div class="title">{chart_id.replace("_", " ").upper()}</div>
-            <div class="subtitle">DISTRIBUCIÓN POR USUARIO</div>
 
             <div class="metrics">
                 <div class="metric-box">
-                    <div>Total de eventos</div>
+                    <div>Total</div>
                     <div class="metric-value">{total}</div>
                 </div>
 
                 <div class="metric-box">
-                    <div>Usuarios únicos</div>
+                    <div>Categorías</div>
                     <div class="metric-value">{unique}</div>
                 </div>
             </div>
@@ -127,22 +150,28 @@ def build_dashboard_chart(chart_id, chart):
             const ctx = document.getElementById('chart');
 
             new Chart(ctx, {{
-                type: 'bar',
+                type: '{js_type}',
                 data: {{
                     labels: {json.dumps(labels)},
                     datasets: [{{
                         data: {json.dumps(values)},
-                        backgroundColor: [
-                            '#3b82f6','#22c55e','#ef4444','#f59e0b'
-                        ],
-                        borderRadius: 8
+                        backgroundColor: {json.dumps(colors)},
+                        borderRadius: 8,
+                        {extra_options}
                     }}]
                 }},
                 options: {{
+                    responsive: true,
+                    indexAxis: '{index_axis}',
+
                     plugins: {{
-                        legend: {{ display: false }}
+                        legend: {{
+                            display: {str(chart_type == "pie").lower()},
+                            labels: {{ color: 'white' }}
+                        }}
                     }},
-                    scales: {{
+
+                    scales: {{} if '{js_type}' === 'pie' else {{
                         x: {{
                             ticks: {{ color: 'white' }},
                             grid: {{ color: 'rgba(255,255,255,0.05)' }}
