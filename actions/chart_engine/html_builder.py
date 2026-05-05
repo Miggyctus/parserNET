@@ -19,6 +19,7 @@ def extract_labels_values(data):
 
     return labels, values
 
+
 def build_dashboard_chart(chart_id, chart):
     import json
 
@@ -36,7 +37,7 @@ def build_dashboard_chart(chart_id, chart):
         else:
             labels.append(str(item[key])[:20])
 
-        values.append(item["event_count"])
+        values.append(item.get("event_count", 0))
 
     total = sum(values)
     unique = len(values)
@@ -69,6 +70,23 @@ def build_dashboard_chart(chart_id, chart):
         '#a855f7','#06b6d4','#e11d48','#84cc16'
     ]
 
+    # ===== SCALES FIX =====
+    if js_type == "pie":
+        scales_block = "{}"
+    else:
+        scales_block = """
+        {
+            x: {
+                ticks: { color: 'white' },
+                grid: { color: 'rgba(255,255,255,0.05)' }
+            },
+            y: {
+                ticks: { color: 'white' },
+                grid: { color: 'rgba(255,255,255,0.05)' }
+            }
+        }
+        """
+
     return f"""
     <html>
     <head>
@@ -99,6 +117,7 @@ def build_dashboard_chart(chart_id, chart):
                 text-align: center;
                 font-size: 20px;
                 font-weight: 600;
+                margin-bottom: 10px;
             }}
 
             .metrics {{
@@ -162,6 +181,7 @@ def build_dashboard_chart(chart_id, chart):
                 }},
                 options: {{
                     responsive: true,
+                    maintainAspectRatio: false,
                     indexAxis: '{index_axis}',
 
                     plugins: {{
@@ -171,16 +191,7 @@ def build_dashboard_chart(chart_id, chart):
                         }}
                     }},
 
-                    scales: {{} if '{js_type}' === 'pie' else {{
-                        x: {{
-                            ticks: {{ color: 'white' }},
-                            grid: {{ color: 'rgba(255,255,255,0.05)' }}
-                        }},
-                        y: {{
-                            ticks: {{ color: 'white' }},
-                            grid: {{ color: 'rgba(255,255,255,0.05)' }}
-                        }}
-                    }}
+                    scales: {scales_block}
                 }}
             }});
         </script>
