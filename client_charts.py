@@ -185,6 +185,42 @@ FULL CSV DATA (USE THIS DATA)
 
 {json.dumps(csv_data, separators=(",", ":"), ensure_ascii=False)}
 
+CHART DECISION LOGIC (MANDATORY)
+
+You MUST select the most appropriate chart type based on the data.
+
+Allowed chart types:
+- "bar"
+- "horizontal_bar"
+- "pie"
+- "line"
+
+Decision rules:
+
+1. Use "pie" ONLY if:
+   - The data represents proportions or percentages
+   - There are 2 to 5 categories max
+   - Example: distribution by severity, event types
+
+2. Use "horizontal_bar" if:
+   - It is a TOP list (top users, IPs, hosts, etc.)
+   - There are more than 5 categories
+   - Labels are long
+
+3. Use "line" if:
+   - The data contains timestamps or time progression
+   - It represents trends, evolution, or sequences
+
+4. Use "bar" if:
+   - It is a simple comparison between categories
+   - Not temporal and not proportional
+
+STRICT RULE:
+- Choosing an incorrect chart type is considered a critical error
+- DO NOT default to "bar"
+- You MUST analyze the data before selecting the chart
+
+
 CRITICAL INSTRUCTIONS
 
 - You MUST strictly use the CSV data.
