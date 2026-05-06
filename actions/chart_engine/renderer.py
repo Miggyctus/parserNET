@@ -5,7 +5,7 @@ from playwright.sync_api import sync_playwright
 def render_html_to_png(html, output_path):
     with sync_playwright() as p:
         browser = p.chromium.launch()
-        page = browser.new_page(viewport={"width": 1000, "height": 800})
+        page = browser.new_page(viewport={"width": 1100, "height": 700})
 
         page.set_content(html)
 
