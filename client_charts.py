@@ -197,7 +197,7 @@ Allowed chart types:
 
 Decision rules:
 
-1. Use "pie" ONLY if:
+1. Use "pie" if:
    - The data represents proportions or percentages
    - There are 2 to 5 categories max
    - Example: distribution by severity, event types
