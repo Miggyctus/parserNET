@@ -21,24 +21,23 @@ def extract_labels_values(data):
 
 def build_dashboard_chart(chart_id, chart):
     chart_type = chart.get("chart_type", "bar")
-    data = chart.get("data", [])
+    data       = chart.get("data", [])
 
-    # Reuse shared helper instead of duplicating logic
     labels, values = extract_labels_values(data)
 
-    total = sum(values)
-    unique = len(values)
+    total     = sum(values)
+    unique    = len(values)
     max_value = max(values) if values else 0
 
     # =====================================================
     # CHART TYPE MAPPING
     # =====================================================
 
-    js_type = "bar"
+    js_type    = "bar"
     index_axis = "x"
 
     if chart_type == "horizontal_bar":
-        js_type = "bar"
+        js_type    = "bar"
         index_axis = "y"
     elif chart_type == "pie":
         js_type = "doughnut"
@@ -50,14 +49,14 @@ def build_dashboard_chart(chart_id, chart):
     # =====================================================
 
     colors = [
-        "#38bdf8",  # sky blue
-        "#34d399",  # emerald
-        "#fb923c",  # orange
-        "#a78bfa",  # violet
-        "#f472b6",  # pink
-        "#facc15",  # yellow
-        "#f87171",  # red
-        "#4ade80",  # green
+        "#3b82f6",
+        "#06b6d4",
+        "#22c55e",
+        "#f59e0b",
+        "#ef4444",
+        "#a855f7",
+        "#e11d48",
+        "#84cc16",
     ]
     colors_json = json.dumps(colors)
 
@@ -68,62 +67,66 @@ def build_dashboard_chart(chart_id, chart):
     if js_type == "line":
         dataset_block = f"""
         {{
-            label: 'Events',
+            label: 'Eventos',
             data: {json.dumps(values)},
-            borderColor: '#38bdf8',
+            borderColor: '#3b82f6',
             backgroundColor: (ctx) => {{
-                const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, 380);
-                gradient.addColorStop(0, 'rgba(56,189,248,0.28)');
-                gradient.addColorStop(1, 'rgba(56,189,248,0.00)');
+                const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, 360);
+                gradient.addColorStop(0, 'rgba(59,130,246,0.30)');
+                gradient.addColorStop(1, 'rgba(59,130,246,0.00)');
                 return gradient;
             }},
             fill: true,
-            tension: 0.42,
+            tension: 0.38,
             pointRadius: 5,
-            pointHoverRadius: 9,
-            pointBackgroundColor: '#0ea5e9',
-            pointBorderColor: '#e0f2fe',
+            pointHoverRadius: 8,
+            pointBackgroundColor: '#60a5fa',
+            pointBorderColor: '#ffffff',
             pointBorderWidth: 2,
             borderWidth: 3
         }}
         """
 
     elif js_type == "doughnut":
+        # Richer doughnut: thicker ring, glow border on hover, shadow plugin
         dataset_block = f"""
         {{
             data: {json.dumps(values)},
             backgroundColor: {colors_json},
-            borderColor: '#03091a',
-            borderWidth: 5,
-            hoverOffset: 22,
-            spacing: 5,
-            cutout: '74%'
+            borderColor: '#0b1628',
+            borderWidth: 3,
+            hoverOffset: 28,
+            hoverBorderColor: '#ffffff',
+            hoverBorderWidth: 2,
+            spacing: 3,
+            cutout: '65%'
         }}
         """
 
     else:
         dataset_block = f"""
         {{
-            label: 'Events',
+            label: 'Eventos',
             data: {json.dumps(values)},
             backgroundColor: (ctx) => {{
                 const chart = ctx.chart;
                 const {{ ctx: c, chartArea }} = chart;
-                if (!chartArea) return {colors_json}[ctx.dataIndex % {len(colors)}];
                 const palette = {colors_json};
                 const color = palette[ctx.dataIndex % palette.length];
+                if (!chartArea) return color;
                 const hex = color.replace('#','');
                 const r = parseInt(hex.slice(0,2),16);
                 const g = parseInt(hex.slice(2,4),16);
                 const b = parseInt(hex.slice(4,6),16);
-                const grad = {'x' if index_axis == 'x' else 'y'} === 'x'
-                    ? c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom)
-                    : c.createLinearGradient(chartArea.left, 0, chartArea.right, 0);
-                grad.addColorStop(0, `rgba(${{r}},${{g}},${{b}},0.95)`);
-                grad.addColorStop(1, `rgba(${{r}},${{g}},${{b}},0.45)`);
+                const isHorizontal = '{index_axis}' === 'y';
+                const grad = isHorizontal
+                    ? c.createLinearGradient(chartArea.left, 0, chartArea.right, 0)
+                    : c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+                grad.addColorStop(0, `rgba(${{r}},${{g}},${{b}},1)`);
+                grad.addColorStop(1, `rgba(${{r}},${{g}},${{b}},0.5)`);
                 return grad;
             }},
-            borderRadius: 10,
+            borderRadius: 8,
             borderSkipped: false,
             borderWidth: 0
         }}
@@ -141,41 +144,36 @@ def build_dashboard_chart(chart_id, chart):
             x: {
                 ticks: {
                     color: '#94a3b8',
-                    font: { size: 11, family: 'DM Mono, monospace' },
-                    maxRotation: 35
+                    font: { size: 12, family: 'Inter, sans-serif' },
+                    maxRotation: 30
                 },
-                grid: { color: 'rgba(148,163,184,0.07)' },
-                border: { color: 'rgba(148,163,184,0.12)' }
+                grid: { color: 'rgba(255,255,255,0.05)' },
+                border: { color: 'rgba(255,255,255,0.08)' }
             },
             y: {
                 beginAtZero: true,
                 ticks: {
                     color: '#94a3b8',
-                    font: { size: 11, family: 'DM Mono, monospace' }
+                    font: { size: 12, family: 'Inter, sans-serif' }
                 },
-                grid: { color: 'rgba(148,163,184,0.07)' },
-                border: { color: 'rgba(148,163,184,0.12)' }
+                grid: { color: 'rgba(255,255,255,0.05)' },
+                border: { color: 'rgba(255,255,255,0.08)' }
             }
         }
         """
 
-    # =====================================================
-    # LEGEND POSITION
-    # =====================================================
-
-    legend_display = "true" if js_type == "doughnut" else "false"
+    legend_display  = "true"  if js_type == "doughnut" else "false"
     legend_position = "right" if js_type == "doughnut" else "bottom"
 
-    # Fix: total value embedded in Python, not as an unresolved JS string
-    total_str = str(total)
-    title_display = chart_id.replace("_", " ").upper()
+    total_str     = str(total)
+    title_display = chart_id.replace("_", " ").title()
 
     # =====================================================
-    # HTML OUTPUT
+    # HTML
     # =====================================================
 
     return f"""<!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -183,181 +181,147 @@ def build_dashboard_chart(chart_id, chart):
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
         *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
 
-        :root {{
-            --bg-deep:    #03091a;
-            --bg-card:    rgba(8, 20, 45, 0.82);
-            --border:     rgba(56, 189, 248, 0.14);
-            --accent:     #38bdf8;
-            --accent-dim: rgba(56, 189, 248, 0.18);
-            --text-hi:    #f0f9ff;
-            --text-mid:   #94a3b8;
-            --text-lo:    #475569;
-            --glow:       0 0 40px rgba(56,189,248,0.12), 0 0 100px rgba(56,189,248,0.06);
-            --radius-lg:  20px;
-            --radius-md:  14px;
-        }}
-
-        html, body {{
-            width: 100%; height: 100%;
-            background: var(--bg-deep);
+        body {{
+            font-family: 'Inter', sans-serif;
+            background:
+                radial-gradient(ellipse 55% 45% at 10% 5%,  rgba(59,130,246,0.16) 0%, transparent 55%),
+                radial-gradient(ellipse 45% 40% at 88% 90%, rgba(6,182,212,0.10)  0%, transparent 55%),
+                #020617;
             display: flex;
             justify-content: center;
             align-items: center;
+            width: 100vw;
+            height: 100vh;
             overflow: hidden;
-        }}
-
-        /* Subtle animated background mesh */
-        body::before {{
-            content: '';
-            position: fixed;
-            inset: 0;
-            background:
-                radial-gradient(ellipse 60% 40% at 15% 10%, rgba(56,189,248,0.12) 0%, transparent 60%),
-                radial-gradient(ellipse 50% 35% at 85% 85%, rgba(52,211,153,0.08) 0%, transparent 55%),
-                radial-gradient(ellipse 40% 30% at 60% 50%, rgba(167,139,250,0.06) 0%, transparent 60%);
-            pointer-events: none;
-            z-index: 0;
+            color: #f1f5f9;
         }}
 
         .container {{
-            position: relative;
-            z-index: 1;
-            width: min(96vw, 1020px);
-            background: var(--bg-card);
-            backdrop-filter: blur(24px) saturate(140%);
-            border-radius: var(--radius-lg);
-            border: 1px solid var(--border);
-            box-shadow: var(--glow), inset 0 1px 0 rgba(255,255,255,0.05);
-            padding: 32px 36px 36px;
-            animation: fadeUp 0.6s cubic-bezier(0.22,1,0.36,1) both;
+            width: min(95vw, 980px);
+            background: rgba(15, 23, 42, 0.80);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            border: 1px solid rgba(59,130,246,0.18);
+            box-shadow:
+                0 0 30px rgba(59,130,246,0.12),
+                0 0 80px rgba(59,130,246,0.06),
+                inset 0 1px 0 rgba(255,255,255,0.05);
+            padding: 28px 32px 32px;
+            animation: fadeUp 0.5s ease both;
         }}
 
         @keyframes fadeUp {{
-            from {{ opacity: 0; transform: translateY(18px); }}
+            from {{ opacity: 0; transform: translateY(14px); }}
             to   {{ opacity: 1; transform: translateY(0); }}
         }}
 
-        /* ── HEADER ── */
         .header {{
             display: flex;
             justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 28px;
-            padding-bottom: 20px;
-            border-bottom: 1px solid var(--border);
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 18px;
+            border-bottom: 1px solid rgba(59,130,246,0.12);
         }}
 
         .title {{
-            font-family: 'Syne', sans-serif;
-            font-size: 22px;
-            font-weight: 800;
-            color: var(--text-hi);
-            letter-spacing: 0.04em;
-            line-height: 1.2;
+            font-size: 20px;
+            font-weight: 700;
+            color: #f1f5f9;
         }}
 
         .subtitle {{
-            margin-top: 6px;
-            font-family: 'DM Mono', monospace;
-            font-size: 11px;
-            color: var(--text-lo);
-            text-transform: uppercase;
-            letter-spacing: 0.12em;
+            margin-top: 4px;
+            font-size: 12px;
+            color: #64748b;
+            font-weight: 400;
         }}
 
         .badge {{
             display: flex;
             align-items: center;
-            gap: 7px;
-            background: var(--accent-dim);
-            border: 1px solid rgba(56,189,248,0.28);
-            color: var(--accent);
-            padding: 7px 14px;
+            gap: 6px;
+            background: rgba(59,130,246,0.12);
+            border: 1px solid rgba(59,130,246,0.28);
+            color: #60a5fa;
+            padding: 6px 14px;
             border-radius: 999px;
-            font-family: 'DM Mono', monospace;
-            font-size: 10px;
-            font-weight: 500;
-            letter-spacing: 0.1em;
-            white-space: nowrap;
+            font-size: 12px;
+            font-weight: 600;
         }}
 
-        .badge::before {{
-            content: '';
-            width: 7px; height: 7px;
+        .badge-dot {{
+            width: 6px; height: 6px;
             border-radius: 50%;
-            background: var(--accent);
-            box-shadow: 0 0 8px var(--accent);
-            animation: pulse 2s ease-in-out infinite;
+            background: #60a5fa;
+            box-shadow: 0 0 6px #3b82f6;
+            animation: blink 2s ease-in-out infinite;
         }}
 
-        @keyframes pulse {{
+        @keyframes blink {{
             0%, 100% {{ opacity: 1; }}
-            50%        {{ opacity: 0.4; }}
+            50%       {{ opacity: 0.3; }}
         }}
 
-        /* ── METRICS ── */
         .metrics {{
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 16px;
-            margin-bottom: 28px;
+            gap: 14px;
+            margin-bottom: 24px;
         }}
 
         .metric-card {{
-            background: rgba(255,255,255,0.025);
+            background: rgba(255,255,255,0.03);
             border: 1px solid rgba(255,255,255,0.06);
-            border-radius: var(--radius-md);
-            padding: 18px 20px;
+            border-radius: 14px;
+            padding: 16px 18px;
             position: relative;
             overflow: hidden;
-            transition: border-color 0.25s, background 0.25s;
+            transition: background 0.2s, border-color 0.2s;
         }}
 
         .metric-card:hover {{
-            border-color: var(--border);
-            background: rgba(56,189,248,0.04);
+            background: rgba(59,130,246,0.06);
+            border-color: rgba(59,130,246,0.22);
         }}
 
-        /* Accent bar on top */
-        .metric-card::before {{
+        .metric-card::after {{
             content: '';
             position: absolute;
             top: 0; left: 0; right: 0;
             height: 2px;
-            background: linear-gradient(90deg, var(--accent), transparent);
-            opacity: 0.6;
+            background: linear-gradient(90deg, #3b82f6, transparent);
+            opacity: 0.55;
         }}
 
         .metric-label {{
-            font-family: 'DM Mono', monospace;
-            font-size: 10px;
-            color: var(--text-lo);
-            letter-spacing: 0.14em;
+            font-size: 11px;
+            font-weight: 500;
+            color: #64748b;
             text-transform: uppercase;
-            margin-bottom: 10px;
+            letter-spacing: 0.07em;
+            margin-bottom: 8px;
         }}
 
         .metric-value {{
-            font-family: 'Syne', sans-serif;
-            font-size: 32px;
+            font-size: 28px;
             font-weight: 700;
-            color: var(--text-hi);
+            color: #f1f5f9;
             line-height: 1;
         }}
 
-        /* ── CHART ── */
         .chart-wrapper {{
             position: relative;
-            height: 400px;
-            border-radius: var(--radius-md);
+            height: 380px;
             background: rgba(255,255,255,0.015);
-            border: 1px solid rgba(255,255,255,0.04);
-            padding: 16px;
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 14px;
+            padding: 12px;
         }}
 
         canvas {{
@@ -373,22 +337,25 @@ def build_dashboard_chart(chart_id, chart):
     <div class="header">
         <div>
             <div class="title">{title_display}</div>
-            <div class="subtitle">Security Telemetry &nbsp;/&nbsp; SOC Analytics</div>
+            <div class="subtitle">Telemetría de seguridad &nbsp;·&nbsp; Análisis SOC</div>
         </div>
-        <div class="badge">LIVE FEED</div>
+        <div class="badge">
+            <span class="badge-dot"></span>
+            En vivo
+        </div>
     </div>
 
     <div class="metrics">
         <div class="metric-card">
-            <div class="metric-label">Total Events</div>
+            <div class="metric-label">Total de eventos</div>
             <div class="metric-value">{total:,}</div>
         </div>
         <div class="metric-card">
-            <div class="metric-label">Categories</div>
+            <div class="metric-label">Categorías</div>
             <div class="metric-value">{unique}</div>
         </div>
         <div class="metric-card">
-            <div class="metric-label">Peak Value</div>
+            <div class="metric-label">Valor máximo</div>
             <div class="metric-value">{max_value:,}</div>
         </div>
     </div>
@@ -400,39 +367,58 @@ def build_dashboard_chart(chart_id, chart):
 </div>
 
 <script>
-    // ─── CENTER TEXT PLUGIN (doughnut only) ───────────────────────
+    // ── Glow effect on doughnut segments ─────────────────────────
+    const glowPlugin = {{
+        id: 'segmentGlow',
+        afterDatasetDraw(chart) {{
+            if (chart.config.type !== 'doughnut') return;
+            const {{ ctx }} = chart;
+            const meta = chart.getDatasetMeta(0);
+            meta.data.forEach((arc, i) => {{
+                if (!arc.active) return;
+                const color = chart.data.datasets[0].backgroundColor[i];
+                ctx.save();
+                ctx.shadowColor  = color;
+                ctx.shadowBlur   = 24;
+                arc.draw(ctx);
+                ctx.restore();
+            }});
+        }}
+    }};
+
+    // ── Center label (solo para gráfico de torta) ─────────────────
     const centerTextPlugin = {{
         id: 'centerText',
         beforeDraw(chart) {{
             if (chart.config.type !== 'doughnut') return;
             const {{ ctx, width, height }} = chart;
+            const cx = width  / 2;
+            const cy = height / 2;
             ctx.save();
-            ctx.textAlign = 'center';
+            ctx.textAlign    = 'center';
             ctx.textBaseline = 'middle';
-            const cx = width / 2, cy = height / 2;
 
-            ctx.font = '500 11px "DM Mono", monospace';
-            ctx.fillStyle = '#475569';
-            ctx.letterSpacing = '0.12em';
-            ctx.fillText('TOTAL EVENTS', cx, cy - 18);
+            // small label
+            ctx.font      = '500 12px Inter, sans-serif';
+            ctx.fillStyle = '#64748b';
+            ctx.fillText('Total eventos', cx, cy - 16);
 
-            ctx.font = 'bold 36px "Syne", sans-serif';
-            ctx.fillStyle = '#f0f9ff';
+            // big number
+            ctx.font      = 'bold 34px Inter, sans-serif';
+            ctx.fillStyle = '#f1f5f9';
             ctx.fillText('{total_str}', cx, cy + 16);
+
             ctx.restore();
         }}
     }};
 
-    // ─── CHART INIT ───────────────────────────────────────────────
-    const ctx = document.getElementById('chart');
-
-    new Chart(ctx, {{
+    new Chart(document.getElementById('chart'), {{
         type: '{js_type}',
         data: {{
             labels: {json.dumps(labels)},
             datasets: [ {dataset_block} ]
         }},
-        plugins: [centerTextPlugin],
+        plugins: [glowPlugin, centerTextPlugin],
         options: {{
             responsive: true,
             maintainAspectRatio: false,
@@ -445,24 +431,44 @@ def build_dashboard_chart(chart_id, chart):
                     labels: {{
                         color: '#94a3b8',
                         padding: 20,
-                        boxWidth: 12,
-                        boxHeight: 12,
+                        boxWidth: 13,
+                        boxHeight: 13,
                         borderRadius: 4,
-                        font: {{ size: 12, family: '"DM Mono", monospace' }}
+                        useBorderRadius: true,
+                        font: {{ size: 12, family: 'Inter, sans-serif' }},
+                        generateLabels: (chart) => {{
+                            const data = chart.data;
+                            if (!data.labels.length) return [];
+                            const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+                            return data.labels.map((label, i) => {{
+                                const value = data.datasets[0].data[i];
+                                const pct   = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                return {{
+                                    text: `${{label}}  ${{pct}}%`,
+                                    fillStyle: data.datasets[0].backgroundColor[i],
+                                    strokeStyle: 'transparent',
+                                    index: i
+                                }};
+                            }});
+                        }}
                     }}
                 }},
                 tooltip: {{
-                    backgroundColor: '#060f24',
-                    borderColor: 'rgba(56,189,248,0.35)',
+                    backgroundColor: '#0f172a',
+                    borderColor: 'rgba(59,130,246,0.35)',
                     borderWidth: 1,
-                    titleColor: '#f0f9ff',
+                    titleColor: '#f1f5f9',
                     bodyColor: '#94a3b8',
                     padding: 12,
                     cornerRadius: 10,
-                    titleFont: {{ family: '"Syne", sans-serif', size: 13, weight: 'bold' }},
-                    bodyFont: {{ family: '"DM Mono", monospace', size: 11 }},
+                    titleFont: {{ size: 13, weight: 'bold', family: 'Inter, sans-serif' }},
+                    bodyFont:  {{ size: 12, family: 'Inter, sans-serif' }},
                     callbacks: {{
-                        label: (item) => ` ${{item.formattedValue}} events`
+                        label: (item) => {{
+                            const total = item.dataset.data.reduce((a, b) => a + b, 0);
+                            const pct   = total > 0 ? ((item.raw / total) * 100).toFixed(1) : 0;
+                            return `  ${{item.formattedValue}} eventos (${{pct}}%)`;
+                        }}
                     }}
                 }}
             }},
