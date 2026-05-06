@@ -43,6 +43,7 @@ def insert_chart(chart_id):
             )
             run.bold = True
 
+            os.remove(chart_path)
         except Exception as e:
             print(f"[WARN] Failed to insert chart {chart_id}: {e}")
     else:
