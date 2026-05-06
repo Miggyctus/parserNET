@@ -114,9 +114,11 @@ def build_dashboard_chart(chart_id, chart):
 
             spacing: 4,
 
-            hoverOffset: 18,
+            hoverOffset: 24,
 
-            cutout: '72%'
+            hoverBorderWidth: 0,
+
+            cutout: '68%'
         }}
         """
 
@@ -342,7 +344,11 @@ def build_dashboard_chart(chart_id, chart):
 
             .chart-wrapper {{
 
-                height: 430px;
+                height: 520px;
+
+                display: flex;
+                justify-content: center;
+                align-items: center;
 
                 position: relative;
             }}
@@ -423,50 +429,6 @@ def build_dashboard_chart(chart_id, chart):
 
         <script>
 
-            // =========================================
-            // CENTER TEXT FOR PIE / DOUGHNUT
-            // =========================================
-
-            const centerTextPlugin = {{
-
-                id: 'centerText',
-
-                beforeDraw(chart) {{
-
-                    if (chart.config.type !== 'doughnut')
-                        return;
-
-                    const {{ ctx }} = chart;
-
-                    const width = chart.width;
-                    const height = chart.height;
-
-                    ctx.save();
-
-                    ctx.textAlign = 'center';
-
-                    ctx.fillStyle = '#94a3b8';
-                    ctx.font = '14px Inter';
-
-                    ctx.fillText(
-                        'TOTAL EVENTOS',
-                        width / 2,
-                        height / 2 - 12
-                    );
-
-                    ctx.fillStyle = '#ffffff';
-                    ctx.font = 'bold 30px Inter';
-
-                    ctx.fillText(
-                        '{total}',
-                        width / 2,
-                        height / 2 + 22
-                    );
-
-                    ctx.restore();
-                }}
-            }};
-
             const ctx = document.getElementById('chart');
 
             new Chart(ctx, {{
@@ -481,8 +443,6 @@ def build_dashboard_chart(chart_id, chart):
                         {dataset_block}
                     ]
                 }},
-
-                plugins: [centerTextPlugin],
 
                 options: {{
 
@@ -503,6 +463,8 @@ def build_dashboard_chart(chart_id, chart):
                             display: {str(js_type == "doughnut").lower()},
 
                             position: '{'right' if js_type == 'doughnut' else 'bottom'}',
+
+                            align: 'center',
 
                             labels: {{
 
