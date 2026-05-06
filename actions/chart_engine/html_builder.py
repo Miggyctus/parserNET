@@ -19,7 +19,6 @@ def extract_labels_values(data):
 
     return labels, values
 
-
 def build_dashboard_chart(chart_id, chart):
     import json
 
@@ -30,7 +29,16 @@ def build_dashboard_chart(chart_id, chart):
     values = []
 
     for item in data:
-        key = [k for k in item.keys() if k != "event_count"][0]
+
+        key_candidates = [
+            k for k in item.keys()
+            if k != "event_count"
+        ]
+
+        if not key_candidates:
+            continue
+
+        key = key_candidates[0]
 
         if key == "timestamp":
             labels.append(item[key])
@@ -61,7 +69,7 @@ def build_dashboard_chart(chart_id, chart):
         js_type = "line"
 
     # =====================================================
-    # DATASET OPTIONS
+    # DATASETS
     # =====================================================
 
     if js_type == "line":
@@ -70,13 +78,17 @@ def build_dashboard_chart(chart_id, chart):
         {{
             label: 'Eventos',
             data: {json.dumps(values)},
+
             borderColor: '#3b82f6',
             backgroundColor: 'rgba(59,130,246,0.18)',
+
             fill: true,
             tension: 0.35,
+
             pointRadius: 4,
-            pointHoverRadius: 6,
+            pointHoverRadius: 7,
             pointBackgroundColor: '#60a5fa',
+
             borderWidth: 3
         }}
         """
@@ -100,7 +112,7 @@ def build_dashboard_chart(chart_id, chart):
             borderColor: '#0f172a',
             borderWidth: 4,
 
-            spacing: 3,
+            spacing: 4,
 
             hoverOffset: 18,
 
@@ -114,6 +126,7 @@ def build_dashboard_chart(chart_id, chart):
         {{
             label: 'Eventos',
             data: {json.dumps(values)},
+
             backgroundColor: [
                 '#3b82f6',
                 '#06b6d4',
@@ -124,7 +137,8 @@ def build_dashboard_chart(chart_id, chart):
                 '#e11d48',
                 '#84cc16'
             ],
-            borderRadius: 10,
+
+            borderRadius: 12,
             borderSkipped: false
         }}
         """
@@ -152,14 +166,17 @@ def build_dashboard_chart(chart_id, chart):
                     color: 'rgba(255,255,255,0.04)'
                 }
             },
+
             y: {
                 beginAtZero: true,
+
                 ticks: {
                     color: '#cbd5e1',
                     font: {
                         size: 11
                     }
                 },
+
                 grid: {
                     color: 'rgba(255,255,255,0.04)'
                 }
@@ -173,11 +190,15 @@ def build_dashboard_chart(chart_id, chart):
 
     return f"""
     <html>
+
     <head>
 
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+        <link
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+            rel="stylesheet"
+        >
 
         <style>
 
@@ -186,11 +207,22 @@ def build_dashboard_chart(chart_id, chart):
             }}
 
             body {{
+
                 margin: 0;
+
                 font-family: 'Inter', sans-serif;
+
                 background:
-                    radial-gradient(circle at top left, rgba(59,130,246,0.18), transparent 30%),
-                    radial-gradient(circle at bottom right, rgba(6,182,212,0.12), transparent 30%),
+                    radial-gradient(circle at top left,
+                        rgba(59,130,246,0.18),
+                        transparent 30%
+                    ),
+
+                    radial-gradient(circle at bottom right,
+                        rgba(6,182,212,0.12),
+                        transparent 30%
+                    ),
+
                     #020617;
 
                 color: white;
@@ -225,32 +257,42 @@ def build_dashboard_chart(chart_id, chart):
             }}
 
             .header {{
+
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
+
                 margin-bottom: 24px;
             }}
 
             .title-block {{
+
                 display: flex;
                 flex-direction: column;
+
                 gap: 6px;
             }}
 
             .title {{
+
                 font-size: 24px;
                 font-weight: 700;
+
                 letter-spacing: 0.5px;
             }}
 
             .subtitle {{
+
                 color: #94a3b8;
                 font-size: 13px;
             }}
 
             .badge {{
+
                 background: rgba(59,130,246,0.15);
+
                 border: 1px solid rgba(59,130,246,0.3);
+
                 color: #60a5fa;
 
                 padding: 8px 14px;
@@ -262,8 +304,11 @@ def build_dashboard_chart(chart_id, chart):
             }}
 
             .metrics {{
+
                 display: grid;
+
                 grid-template-columns: repeat(3, 1fr);
+
                 gap: 18px;
 
                 margin-bottom: 28px;
@@ -281,27 +326,35 @@ def build_dashboard_chart(chart_id, chart):
             }}
 
             .metric-label {{
+
                 color: #94a3b8;
+
                 font-size: 13px;
+
                 margin-bottom: 8px;
             }}
 
             .metric-value {{
+
                 font-size: 30px;
                 font-weight: 700;
             }}
 
             .chart-wrapper {{
-                height: 420px;
+
+                height: 430px;
+
                 position: relative;
             }}
 
             canvas {{
+
                 width: 100% !important;
                 height: 100% !important;
             }}
 
         </style>
+
     </head>
 
     <body>
@@ -331,18 +384,33 @@ def build_dashboard_chart(chart_id, chart):
             <div class="metrics">
 
                 <div class="metric-card">
-                    <div class="metric-label">TOTAL EVENTOS</div>
-                    <div class="metric-value">{total}</div>
+                    <div class="metric-label">
+                        TOTAL EVENTOS
+                    </div>
+
+                    <div class="metric-value">
+                        {total}
+                    </div>
                 </div>
 
                 <div class="metric-card">
-                    <div class="metric-label">CATEGORÍAS</div>
-                    <div class="metric-value">{unique}</div>
+                    <div class="metric-label">
+                        CATEGORÍAS
+                    </div>
+
+                    <div class="metric-value">
+                        {unique}
+                    </div>
                 </div>
 
                 <div class="metric-card">
-                    <div class="metric-label">VALOR MÁXIMO</div>
-                    <div class="metric-value">{max_value}</div>
+                    <div class="metric-label">
+                        VALOR MÁXIMO
+                    </div>
+
+                    <div class="metric-value">
+                        {max_value}
+                    </div>
                 </div>
 
             </div>
@@ -355,6 +423,50 @@ def build_dashboard_chart(chart_id, chart):
 
         <script>
 
+            // =========================================
+            // CENTER TEXT FOR PIE / DOUGHNUT
+            // =========================================
+
+            const centerTextPlugin = {{
+
+                id: 'centerText',
+
+                beforeDraw(chart) {{
+
+                    if (chart.config.type !== 'doughnut')
+                        return;
+
+                    const {{ ctx }} = chart;
+
+                    const width = chart.width;
+                    const height = chart.height;
+
+                    ctx.save();
+
+                    ctx.textAlign = 'center';
+
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.font = '14px Inter';
+
+                    ctx.fillText(
+                        'TOTAL EVENTOS',
+                        width / 2,
+                        height / 2 - 12
+                    );
+
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 30px Inter';
+
+                    ctx.fillText(
+                        '{total}',
+                        width / 2,
+                        height / 2 + 22
+                    );
+
+                    ctx.restore();
+                }}
+            }};
+
             const ctx = document.getElementById('chart');
 
             new Chart(ctx, {{
@@ -362,16 +474,22 @@ def build_dashboard_chart(chart_id, chart):
                 type: '{js_type}',
 
                 data: {{
+
                     labels: {json.dumps(labels)},
+
                     datasets: [
                         {dataset_block}
                     ]
                 }},
 
+                plugins: [centerTextPlugin],
+
                 options: {{
 
                     responsive: true,
+
                     maintainAspectRatio: false,
+
                     indexAxis: '{index_axis}',
 
                     animation: {{
@@ -381,12 +499,17 @@ def build_dashboard_chart(chart_id, chart):
                     plugins: {{
 
                         legend: {{
+
                             display: {str(js_type == "doughnut").lower()},
-                            position: 'bottom',
+
+                            position: '{'right' if js_type == 'doughnut' else 'bottom'}',
 
                             labels: {{
+
                                 color: '#e2e8f0',
+
                                 padding: 18,
+
                                 font: {{
                                     size: 12
                                 }}
@@ -394,10 +517,15 @@ def build_dashboard_chart(chart_id, chart):
                         }},
 
                         tooltip: {{
+
                             backgroundColor: '#0f172a',
+
                             borderColor: 'rgba(59,130,246,0.4)',
+
                             borderWidth: 1,
-                            titleColor: '#fff',
+
+                            titleColor: '#ffffff',
+
                             bodyColor: '#cbd5e1'
                         }}
 
@@ -412,5 +540,6 @@ def build_dashboard_chart(chart_id, chart):
         </script>
 
     </body>
+
     </html>
     """
