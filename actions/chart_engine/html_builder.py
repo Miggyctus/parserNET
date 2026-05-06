@@ -86,6 +86,7 @@ def build_dashboard_chart(chart_id, chart):
         dataset_block = f"""
         {{
             data: {json.dumps(values)},
+
             backgroundColor: [
                 '#3b82f6',
                 '#06b6d4',
@@ -95,8 +96,15 @@ def build_dashboard_chart(chart_id, chart):
                 '#a855f7',
                 '#e11d48'
             ],
-            borderWidth: 0,
-            hoverOffset: 12
+
+            borderColor: '#0f172a',
+            borderWidth: 4,
+
+            spacing: 3,
+
+            hoverOffset: 18,
+
+            cutout: '72%'
         }}
         """
 
