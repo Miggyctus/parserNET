@@ -51,7 +51,7 @@ SECTION_TOKEN_LIMITS = {
     "DIRECTORIO ACTIVO": 9000,
     "ACTIVIDAD DE USUARIOS ADMINISTRADORES": 5000,
     "CAMBIOS EN EQUIPOS DE COMUNICACIONES": 4500,
-    "REPORTE DE ALERTAS, INCIDENTES Y SUGERENCIAS": 9000,
+    "REPORTE DE ALERTAS, INCIDENTES Y SUGERENCIAS": 12000,
     "REPORTE DE VOLUMEN DE LOGS": 6000,
     "CONCLUSION": 4000
 }
@@ -68,7 +68,7 @@ def load_model():
 
     payload = {
         "model": MODEL_ID,
-        "context_length": 48000,
+        "context_length": 49000,
         "eval_batch_size": 256,
         "offload_kv_cache_to_gpu": True,
         "echo_load_config": True
