@@ -16,7 +16,7 @@ MODEL_ID = "mistralai/ministral-3-14b-reasoning"
 BACKEND_URL = "http://localhost:8000/execute"
 
 REPORT_PATH = "output/reports/llm_report.txt"
-SUMMARY_PATH = "output/json/csv_summary.json"
+CSV_INTELLIGENCE_PATH = "output/json/csv_intelligence.json"
 OUTPUT_JSON = "output/json/llm_output.json"
 PROMPT_CHART_FILE = "prompt_chart.json"
 
@@ -35,7 +35,6 @@ MODEL_INSTANCE_ID = None
 
 def load_model():
     global MODEL_INSTANCE_ID
-
     payload = {
         "model": MODEL_ID,
         "context_length": 47000,
@@ -102,11 +101,11 @@ def load_report_text():
         return f.read()
 
 
-def load_summary():
-    if not os.path.exists(SUMMARY_PATH):
-        raise RuntimeError("CSV summary not found")
+def load_csv_intelligence():
+    if not os.path.exists(CSV_INTELLIGENCE_PATH):
+        raise RuntimeError("CSV intelligence file not found")
 
-    with open(SUMMARY_PATH, "r", encoding="utf-8") as f:
+    with open(CSV_INTELLIGENCE_PATH, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -153,7 +152,7 @@ def load_all_csv(folder = "input_csv", max_rows_per_file = 5000):
 BATCH_SIZE = 5  # procesar N placeholders por llamada al LLM
 
 
-def ask_llm(placeholders, csv_data):
+def ask_llm(placeholders, csv_intelligence):
 
     chart_prompt = load_chart_prompt()
     all_charts = {}
@@ -161,14 +160,14 @@ def ask_llm(placeholders, csv_data):
     for batch_start in range(0, len(placeholders), BATCH_SIZE):
         batch = placeholders[batch_start:batch_start + BATCH_SIZE]
 
-        batch_result = ask_llm_batch(batch, csv_data, chart_prompt)
+        batch_result = ask_llm_batch(batch, csv_intelligence, chart_prompt)
         charts = batch_result.get("charts", {})
         all_charts.update(charts)
 
     return {"charts": all_charts}
 
 
-def ask_llm_batch(placeholders_batch, csv_data, chart_prompt):
+def ask_llm_batch(placeholders_batch, csv_intelligence, chart_prompt):
 
     placeholder_list = "\n".join(
         [f"{i+1}. {p}" for i, p in enumerate(placeholders_batch)]
@@ -181,9 +180,9 @@ REQUESTED CHART PLACEHOLDERS
 
 {placeholder_list}
 
-FULL CSV DATA (USE THIS DATA)
+FULL DATA (USE THIS DATA)
 
-{json.dumps(csv_data, separators=(",", ":"), ensure_ascii=False)}
+{json.dumps(csv_intelligence, separators=(",", ":"), ensure_ascii=False)}
 
 CHART DECISION LOGIC (MANDATORY)
 
@@ -223,7 +222,7 @@ STRICT RULE:
 
 CRITICAL INSTRUCTIONS
 
-- You MUST strictly use the CSV data.
+- You MUST strictly use the data.
 - You MUST aggregate, count, and group data correctly.
 - You MUST generate REAL data.
 - Maximum 10 items per chart.
@@ -385,8 +384,7 @@ def clean_json_output(raw: str, placeholders: list):
 def main():
 
     report_text = load_report_text()
-    csv_data = load_all_csv()
-
+    csv_intelligence = load_csv_intelligence()
     placeholders = extract_chart_placeholders(report_text)
 
     if not placeholders:
@@ -397,7 +395,7 @@ def main():
 
     with model_session():
 
-        parsed = ask_llm(placeholders, csv_data)
+        parsed = ask_llm(placeholders, csv_intelligence)
 
         os.makedirs("output/json", exist_ok=True)
 

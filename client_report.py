@@ -15,7 +15,7 @@ MODEL_ID = "glm-4.7-flash-claude-opus-4.5-high-reasoning-distill"
 PROMPT_FILE = "prompt_report.json"
 CHART_JSON_PATH = "output/json/llm_output.json"
 REPORT_TEXT_PATH = "output/reports/llm_report.txt"
-CSV_FOLDER = "input_csv"
+CSV_INTELLIGENCE_PATH = "output/json/csv_intelligence.json"
 
 client = OpenAI(
     base_url=BASE_URL,
@@ -132,26 +132,13 @@ def load_chart_json():
     with open(CHART_JSON_PATH, "r", encoding="utf-8") as f:
         return json.load(f)
 
+def load_csv_intelligence():
 
-def load_all_csv(folder_path: str) -> dict:
-    csv_data = {}
+    if not os.path.exists(CSV_INTELLIGENCE_PATH):
+        return {}
 
-    for file in os.listdir(folder_path):
-        if not file.lower().endswith(".csv"):
-            continue
-
-        file_path = os.path.join(folder_path, file)
-
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                content = f.read()
-
-            csv_data[file] = content
-
-        except Exception:
-            continue
-
-    return csv_data
+    with open(CSV_INTELLIGENCE_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 def load_reference_report():
     path = "FL-OPE-23 V00 Informe de Incidentes SOC CADIEM 01032026 al 31032026.pdf"
@@ -171,7 +158,7 @@ def load_reference_report():
 # LLM Call
 # =========================
 
-def build_section_prompt(section, csv_data, reference):
+def build_section_prompt(section, csv_intelligence, reference):
     return f"""
     You are generating a SOC report section.
 
@@ -188,7 +175,7 @@ def build_section_prompt(section, csv_data, reference):
     - No repetition of charts across sections
 
     === DATA ===
-    {json.dumps(csv_data, separators=(',', ':'))}
+    {json.dumps(csv_intelligence, separators=(',', ':'))}
 
     === STYLE REFERENCE ===
     {reference}
@@ -196,8 +183,8 @@ def build_section_prompt(section, csv_data, reference):
     Generate ONLY the section content.
     """
 
-def generate_section(section, system_prompt, csv_data, reference):
-    prompt = build_section_prompt(section, csv_data, reference)
+def generate_section(section, system_prompt, csv_intelligence, reference):
+    prompt = build_section_prompt(section, csv_intelligence, reference)
     maxTokens = SECTION_TOKEN_LIMITS.get(section, 2000)
     completion = client.chat.completions.create(
         model=MODEL_ID,
@@ -253,7 +240,7 @@ def generate_report():
 
     system_prompt = load_system_prompt()
     chart_data = load_chart_json()
-    csv_data = load_all_csv(CSV_FOLDER)
+    csv_intelligence = load_csv_intelligence()  
     reference = load_reference_report()
 
     sections_content ={}
