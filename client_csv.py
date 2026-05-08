@@ -11,7 +11,7 @@ from contextlib import contextmanager
 
 BASE_URL = "http://localhost:1234/v1"
 
-MODEL_ID = "glm-4.7-flash-claude-opus-4.5-high-reasoning-distillantes"
+MODEL_ID = "glm-4.7-flash-claude-opus-4.5-high-reasoning-distill"
 
 PROMPT_FILE = "prompt_csv.json"
 
