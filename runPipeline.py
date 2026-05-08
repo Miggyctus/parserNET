@@ -1,18 +1,50 @@
 import requests
+
+from client_csv_analysis import generate_csv_intelligence
 from client_report import generate_report
 from client_charts import main as run_charts
 
 BACKEND_URL = "http://localhost:8000/execute"
 
+
 def run():
 
-    # 1️⃣ Generar reporte (incluye csv_summary + placeholders)
+    # =========================
+    # 1️⃣ Analyze CSV telemetry
+    # =========================
+
+    print("Generating CSV intelligence...")
+
+    generate_csv_intelligence()
+
+    print("CSV intelligence generated.")
+
+    # =========================
+    # 2️⃣ Generate SOC report
+    # =========================
+
+    print("Generating SOC report...")
+
     generate_report()
 
-    # 2️⃣ Generar charts JSON según placeholders
+    print("SOC report generated.")
+
+    # =========================
+    # 3️⃣ Generate charts JSON
+    # =========================
+
+    print("Generating charts JSON...")
+
     run_charts()
 
-    # 3️⃣ Renderizar imágenes
+    print("Charts JSON generated.")
+
+    # =========================
+    # 4️⃣ Render chart images
+    # =========================
+
+    print("Rendering chart images...")
+
     requests.post(
         BACKEND_URL,
         json={
@@ -21,11 +53,23 @@ def run():
         }
     )
 
-    # 4️⃣ Generar Word final
+    print("Charts rendered.")
+
+    # =========================
+    # 5️⃣ Generate Word report
+    # =========================
+
+    print("Generating DOCX report...")
+
     requests.post(
         BACKEND_URL,
-        json={"action": "generate_word"}
+        json={
+            "action": "generate_word"
+        }
     )
+
+    print("DOCX report generated.")
+
 
 if __name__ == "__main__":
     run()
