@@ -1,6 +1,6 @@
 import requests
 
-from client_csv_analysis import generate_csv_intelligence
+from client_csv import generate_csv_intelligence
 from client_report import generate_report
 from client_charts import main as run_charts
 
