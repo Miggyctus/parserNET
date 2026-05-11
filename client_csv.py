@@ -1,6 +1,7 @@
 import json
 import os
 import httpx
+import re
 import requests
 from openai import OpenAI
 from contextlib import contextmanager
@@ -126,7 +127,7 @@ def load_all_csv(folder_path: str) -> dict:
     return csv_data
 
 
-def batch_csv_files(csv_data, batch_size=2):
+def batch_csv_files(csv_data, batch_size=1):
 
     items = list(csv_data.items())
 
@@ -184,20 +185,75 @@ Raw JSON only.
 # JSON Cleaner
 # =========================
 
-def clean_json(raw):
+def clean_json(raw: str):
+
+    # =========================
+    # remove think blocks
+    # =========================
+
+    raw = re.sub(
+        r"<think>.*?</think>",
+        "",
+        raw,
+        flags=re.DOTALL
+    )
+
+    # =========================
+    # remove markdown fences
+    # =========================
+
+    raw = raw.replace("```json", "")
+    raw = raw.replace("```", "")
 
     raw = raw.strip()
 
-    if raw.startswith("```json"):
-        raw = raw.replace("```json", "", 1)
+    # =========================
+    # extract json object
+    # =========================
 
-    if raw.endswith("```"):
-        raw = raw[:-3]
+    match = re.search(
+        r"\{.*\}",
+        raw,
+        re.DOTALL
+    )
 
-    raw = raw.strip()
+    if not match:
+        raise RuntimeError(
+            "No JSON object found in model output"
+        )
 
-    return json.loads(raw)
+    candidate = match.group(0)
 
+    # =========================
+    # common repairs
+    # =========================
+
+    # remove trailing commas
+    candidate = re.sub(
+        r",\s*([}\]])",
+        r"\1",
+        candidate
+    )
+
+    # replace invalid control chars
+    candidate = candidate.replace("\x00", "")
+
+    # =========================
+    # parse
+    # =========================
+
+    try:
+        return json.loads(candidate)
+
+    except json.JSONDecodeError as e:
+
+        print("\n========= INVALID JSON =========")
+        print(candidate[:4000])
+        print("================================\n")
+
+        raise RuntimeError(
+            f"Failed parsing JSON: {e}"
+        )
 
 # =========================
 # Merge Results
