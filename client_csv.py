@@ -106,7 +106,7 @@ def load_system_prompt():
 
 def load_all_csv(
     folder_path: str,
-    max_rows_per_chunk: int = 500
+    max_rows_per_chunk: int = 400
 ) -> dict:
 
     csv_data = {}
