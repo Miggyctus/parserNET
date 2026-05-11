@@ -16,7 +16,7 @@ MODEL_ID = "mistralai/ministral-3-14b-reasoning"
 BACKEND_URL = "http://localhost:8000/execute"
 
 REPORT_PATH = "output/reports/llm_report.txt"
-CSV_INTELLIGENCE_PATH = "output/json/csv_intelligence.json"
+INTELLIGENCE_DIR = "output/intelligence"
 OUTPUT_JSON = "output/json/llm_output.json"
 PROMPT_CHART_FILE = "prompt_chart.json"
 
@@ -101,13 +101,48 @@ def load_report_text():
         return f.read()
 
 
-def load_csv_intelligence():
-    if not os.path.exists(CSV_INTELLIGENCE_PATH):
-        raise RuntimeError("CSV intelligence file not found")
+def load_intelligence_batches():
 
-    with open(CSV_INTELLIGENCE_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
+    intelligence_batches = []
 
+    if not os.path.exists(INTELLIGENCE_DIR):
+        raise RuntimeError(
+            "Intelligence directory not found"
+        )
+
+    files = sorted(
+        os.listdir(INTELLIGENCE_DIR)
+    )
+
+    for file in files:
+
+        if not file.endswith(".json"):
+            continue
+
+        path = os.path.join(
+            INTELLIGENCE_DIR,
+            file
+        )
+
+        try:
+
+            with open(
+                path,
+                "r",
+                encoding="utf-8"
+            ) as f:
+
+                intelligence_batches.append(
+                    json.load(f)
+                )
+
+        except Exception as e:
+
+            print(
+                f"Failed loading {file}: {e}"
+            )
+
+    return intelligence_batches
 
 def load_chart_prompt():
     if not os.path.exists(PROMPT_CHART_FILE):
@@ -152,7 +187,7 @@ def load_all_csv(folder = "input_csv", max_rows_per_file = 5000):
 BATCH_SIZE = 5  # procesar N placeholders por llamada al LLM
 
 
-def ask_llm(placeholders, csv_intelligence):
+def ask_llm(placeholders, intelligence_batches):
 
     chart_prompt = load_chart_prompt()
     all_charts = {}
@@ -160,14 +195,14 @@ def ask_llm(placeholders, csv_intelligence):
     for batch_start in range(0, len(placeholders), BATCH_SIZE):
         batch = placeholders[batch_start:batch_start + BATCH_SIZE]
 
-        batch_result = ask_llm_batch(batch, csv_intelligence, chart_prompt)
+        batch_result = ask_llm_batch(batch, intelligence_batches, chart_prompt)
         charts = batch_result.get("charts", {})
         all_charts.update(charts)
 
     return {"charts": all_charts}
 
 
-def ask_llm_batch(placeholders_batch, csv_intelligence, chart_prompt):
+def ask_llm_batch(placeholders_batch, intelligence_batches, chart_prompt):
 
     placeholder_list = "\n".join(
         [f"{i+1}. {p}" for i, p in enumerate(placeholders_batch)]
@@ -182,7 +217,7 @@ REQUESTED CHART PLACEHOLDERS
 
 FULL DATA (USE THIS DATA)
 
-{json.dumps(csv_intelligence, separators=(",", ":"), ensure_ascii=False)}
+{json.dumps(intelligence_batches, separators=(",", ":"), ensure_ascii=False)}
 
 CHART DECISION LOGIC (MANDATORY)
 
@@ -384,7 +419,7 @@ def clean_json_output(raw: str, placeholders: list):
 def main():
 
     report_text = load_report_text()
-    csv_intelligence = load_csv_intelligence()
+    intelligence_batches = load_intelligence_batches()
     placeholders = extract_chart_placeholders(report_text)
 
     if not placeholders:
@@ -395,7 +430,7 @@ def main():
 
     with model_session():
 
-        parsed = ask_llm(placeholders, csv_intelligence)
+        parsed = ask_llm(placeholders, intelligence_batches)
 
         os.makedirs("output/json", exist_ok=True)
 
