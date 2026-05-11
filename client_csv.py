@@ -4,6 +4,7 @@ import httpx
 import re
 import requests
 import csv
+
 from openai import OpenAI
 from contextlib import contextmanager
 
@@ -19,9 +20,11 @@ PROMPT_FILE = "prompt_csv.json"
 
 CSV_FOLDER = "input_csv"
 
-OUTPUT_PATH = "output/json/csv_intelligence.json"
+OUTPUT_DIR = "output/intelligence"
 
 CSV_BATCH_SIZE = 1
+
+MAX_ROWS_PER_CHUNK = 400
 
 client = OpenAI(
     base_url=BASE_URL,
@@ -37,6 +40,7 @@ MODEL_INSTANCE_ID = None
 # =========================
 
 def load_model():
+
     global MODEL_INSTANCE_ID
 
     payload = {
@@ -54,12 +58,16 @@ def load_model():
     )
 
     if response.status_code != 200:
-        raise RuntimeError(f"Failed to load model: {response.text}")
+        raise RuntimeError(
+            f"Failed to load model: {response.text}"
+        )
 
     data = response.json()
 
     if data.get("status") != "loaded":
-        raise RuntimeError(f"Model failed to load: {data}")
+        raise RuntimeError(
+            f"Model failed to load: {data}"
+        )
 
     MODEL_INSTANCE_ID = data.get("instance_id")
 
@@ -67,6 +75,7 @@ def load_model():
 
 
 def unload_model():
+
     global MODEL_INSTANCE_ID
 
     if not MODEL_INSTANCE_ID:
@@ -85,6 +94,7 @@ def unload_model():
 
 @contextmanager
 def model_session():
+
     load_model()
 
     try:
@@ -100,13 +110,18 @@ def model_session():
 
 def load_system_prompt():
 
-    with open(PROMPT_FILE, "r", encoding="utf-8") as f:
+    with open(
+        PROMPT_FILE,
+        "r",
+        encoding="utf-8"
+    ) as f:
+
         return json.load(f)["system_prompt"]
 
 
 def load_all_csv(
     folder_path: str,
-    max_rows_per_chunk: int = 400
+    max_rows_per_chunk: int = MAX_ROWS_PER_CHUNK
 ) -> dict:
 
     csv_data = {}
@@ -116,7 +131,10 @@ def load_all_csv(
         if not file.lower().endswith(".csv"):
             continue
 
-        file_path = os.path.join(folder_path, file)
+        file_path = os.path.join(
+            folder_path,
+            file
+        )
 
         try:
 
@@ -131,7 +149,7 @@ def load_all_csv(
                 rows = list(reader)
 
             # =========================
-            # small csv
+            # Small CSV
             # =========================
 
             if len(rows) <= max_rows_per_chunk:
@@ -141,7 +159,7 @@ def load_all_csv(
                 continue
 
             # =========================
-            # split large csv
+            # Chunk Large CSV
             # =========================
 
             chunk_index = 1
@@ -157,7 +175,9 @@ def load_all_csv(
                 ]
 
                 chunk_name = (
-                    f"{file}__part_{chunk_index}"
+                    f"{file}"
+                    f"__part_{chunk_index}"
+                    f"__rows_{i}_{i + len(chunk)}"
                 )
 
                 csv_data[chunk_name] = chunk
@@ -172,15 +192,25 @@ def load_all_csv(
 
     return csv_data
 
-def batch_csv_files(csv_data, batch_size=2):
+
+def batch_csv_files(
+    csv_data,
+    batch_size=2
+):
 
     items = list(csv_data.items())
 
     batches = []
 
-    for i in range(0, len(items), batch_size):
+    for i in range(
+        0,
+        len(items),
+        batch_size
+    ):
 
-        batch = dict(items[i:i + batch_size])
+        batch = dict(
+            items[i:i + batch_size]
+        )
 
         batches.append(batch)
 
@@ -194,31 +224,29 @@ def batch_csv_files(csv_data, batch_size=2):
 def build_analysis_prompt(csv_data):
 
     return f"""
-Analyze the following heterogeneous SOC telemetry CSV datasets.
+Analyze the following heterogeneous SOC telemetry datasets.
 
 OBJECTIVE:
 Generate structured telemetry intelligence JSON.
 
 IMPORTANT:
-- Detect semantic meaning of fields dynamically
-- Infer security-relevant entities
-- Reduce redundant information
+- Detect semantic meaning dynamically
+- Detect anomalies
+- Reduce repetitive telemetry
 - Generate high-value summaries
-- Detect anomalies and patterns
+- Detect high-signal entities
 - Recommend useful visualizations
-- Identify high-signal fields
-- Detect security-relevant dimensions
-- Generate useful aggregated metrics
+- Preserve security context
+- Use ONLY provided telemetry
 
 STRICT RULES:
 - Output JSON ONLY
 - NO markdown
 - NO explanations
-- NO narrative report
+- NO prose
 - NO hallucinations
-- Use ONLY provided data
 
-CSV DATA:
+TELEMETRY DATA:
 {json.dumps(csv_data, separators=(",", ":"), ensure_ascii=False)}
 
 OUTPUT:
@@ -232,10 +260,6 @@ Raw JSON only.
 
 def clean_json(raw: str):
 
-    # =========================
-    # remove think blocks
-    # =========================
-
     raw = re.sub(
         r"<think>.*?</think>",
         "",
@@ -243,18 +267,17 @@ def clean_json(raw: str):
         flags=re.DOTALL
     )
 
-    # =========================
-    # remove markdown fences
-    # =========================
+    raw = raw.replace(
+        "```json",
+        ""
+    )
 
-    raw = raw.replace("```json", "")
-    raw = raw.replace("```", "")
+    raw = raw.replace(
+        "```",
+        ""
+    )
 
     raw = raw.strip()
-
-    # =========================
-    # extract json object
-    # =========================
 
     match = re.search(
         r"\{.*\}",
@@ -263,31 +286,28 @@ def clean_json(raw: str):
     )
 
     if not match:
+
         raise RuntimeError(
-            "No JSON object found in model output"
+            "No JSON object found"
         )
 
     candidate = match.group(0)
 
-    # =========================
-    # common repairs
-    # =========================
-
     # remove trailing commas
+
     candidate = re.sub(
         r",\s*([}\]])",
         r"\1",
         candidate
     )
 
-    # replace invalid control chars
-    candidate = candidate.replace("\x00", "")
-
-    # =========================
-    # parse
-    # =========================
+    candidate = candidate.replace(
+        "\x00",
+        ""
+    )
 
     try:
+
         return json.loads(candidate)
 
     except json.JSONDecodeError as e:
@@ -300,67 +320,52 @@ def clean_json(raw: str):
             f"Failed parsing JSON: {e}"
         )
 
+
 # =========================
-# Merge Results
+# Save Batch Intelligence
 # =========================
 
-def merge_analysis_results(results):
+def save_batch_intelligence(
+    batch_index,
+    intelligence
+):
 
-    merged = {
-        "datasets": [],
-        "detected_entities": [],
-        "high_signal_fields": [],
-        "top_metrics": [],
-        "anomalies": [],
-        "recommended_charts": []
-    }
-
-    for result in results:
-
-        merged["datasets"].extend(
-            result.get("datasets", [])
-        )
-
-        merged["detected_entities"].extend(
-            result.get("detected_entities", [])
-        )
-
-        merged["high_signal_fields"].extend(
-            result.get("high_signal_fields", [])
-        )
-
-        merged["top_metrics"].extend(
-            result.get("top_metrics", [])
-        )
-
-        merged["anomalies"].extend(
-            result.get("anomalies", [])
-        )
-
-        merged["recommended_charts"].extend(
-            result.get("recommended_charts", [])
-        )
-
-    # remove duplicates
-
-    merged["detected_entities"] = list(
-        set(merged["detected_entities"])
+    os.makedirs(
+        OUTPUT_DIR,
+        exist_ok=True
     )
 
-    merged["high_signal_fields"] = list(
-        set(merged["high_signal_fields"])
+    output_path = os.path.join(
+        OUTPUT_DIR,
+        f"batch_{batch_index + 1}.json"
     )
 
-    return merged
+    with open(
+        output_path,
+        "w",
+        encoding="utf-8"
+    ) as f:
+
+        json.dump(
+            intelligence,
+            f,
+            indent=2,
+            ensure_ascii=False
+        )
+
+    print(
+        f"Saved intelligence: {output_path}"
+    )
 
 
 # =========================
 # Batch LLM Analysis
 # =========================
 
-def analyze_csv_batches(system_prompt, csv_batches):
-
-    all_results = []
+def analyze_csv_batches(
+    system_prompt,
+    csv_batches
+):
 
     total_batches = len(csv_batches)
 
@@ -371,7 +376,9 @@ def analyze_csv_batches(system_prompt, csv_batches):
             f"{idx + 1}/{total_batches}"
         )
 
-        prompt = build_analysis_prompt(batch)
+        prompt = build_analysis_prompt(
+            batch
+        )
 
         completion = client.chat.completions.create(
             model=MODEL_ID,
@@ -385,18 +392,27 @@ def analyze_csv_batches(system_prompt, csv_batches):
                     "content": prompt
                 }
             ],
-            temperature=0.2,
+            temperature=0,
             top_p=0.8,
-            max_tokens=12000
+            max_tokens=12000,
+            response_format={
+                "type": "json_object"
+            }
         )
 
-        response = completion.choices[0].message.content
+        response = (
+            completion
+            .choices[0]
+            .message
+            .content
+        )
 
         parsed = clean_json(response)
 
-        all_results.append(parsed)
-
-    return merge_analysis_results(all_results)
+        save_batch_intelligence(
+            idx,
+            parsed
+        )
 
 
 # =========================
@@ -407,7 +423,9 @@ def generate_csv_intelligence():
 
     system_prompt = load_system_prompt()
 
-    csv_data = load_all_csv(CSV_FOLDER)
+    csv_data = load_all_csv(
+        CSV_FOLDER
+    )
 
     csv_batches = batch_csv_files(
         csv_data,
@@ -416,32 +434,25 @@ def generate_csv_intelligence():
 
     with model_session():
 
-        intelligence = analyze_csv_batches(
+        analyze_csv_batches(
             system_prompt,
             csv_batches
         )
 
-    os.makedirs("output/json", exist_ok=True)
-
-    with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
-
-        json.dump(
-            intelligence,
-            f,
-            indent=2,
-            ensure_ascii=False
-        )
-
-    return intelligence
+    return True
 
 
 def main():
 
-    print("Generating CSV intelligence...")
+    print(
+        "Generating CSV intelligence..."
+    )
 
     generate_csv_intelligence()
 
-    print("CSV intelligence generated.")
+    print(
+        "CSV intelligence generated."
+    )
 
 
 if __name__ == "__main__":
