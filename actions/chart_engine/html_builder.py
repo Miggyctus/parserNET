@@ -30,22 +30,86 @@ def build_dashboard_chart(chart_id, chart):
 
     for item in data:
 
-        key_candidates = [
-            k for k in item.keys()
-            if k != "event_count"
-        ]
+        label = None
 
-        if not key_candidates:
-            continue
+        # =========================================
+        # PRIORIDAD 1 → value
+        # =========================================
 
-        key = key_candidates[0]
+        if "value" in item:
+            label = item["value"]
 
-        if key == "timestamp":
-            labels.append(item[key])
+        # =========================================
+        # PRIORIDAD 2 → label
+        # =========================================
+
+        elif "label" in item:
+            label = item["label"]
+
+        # =========================================
+        # PRIORIDAD 3 → semantic fields
+        # =========================================
+
         else:
-            labels.append(str(item[key])[:28])
 
-        values.append(item.get("event_count", 0))
+            semantic_keys = [
+                "username",
+                "hostname",
+                "ip_address",
+                "timestamp",
+                "country",
+                "action",
+                "severity",
+                "event_type",
+                "domain",
+                "protocol",
+                "port",
+                "source"
+            ]
+
+            for key in semantic_keys:
+
+                if key in item:
+                    label = item[key]
+                    break
+
+        # =========================================
+        # PRIORIDAD 4 → fallback genérico
+        # =========================================
+
+        if label is None:
+
+            for key, value in item.items():
+
+                if key not in (
+                    "event_count",
+                    "dimension_key"
+                ):
+
+                    label = value
+                    break
+
+        # =========================================
+        # DEFAULT
+        # =========================================
+
+        if label is None:
+            label = "unknown"
+
+        # =========================================
+        # FORMAT
+        # =========================================
+
+        label = str(label)
+
+        if len(label) > 28:
+            label = label[:28] + "..."
+
+        labels.append(label)
+
+        values.append(
+            item.get("event_count", 0)
+        )
 
     total = sum(values)
     unique = len(values)
