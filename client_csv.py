@@ -394,10 +394,7 @@ def analyze_csv_batches(
             ],
             temperature=0,
             top_p=0.8,
-            max_tokens=12000,
-            response_format={
-                "type": "json_schema"
-            }
+            max_tokens=12000
         )
 
         response = (
