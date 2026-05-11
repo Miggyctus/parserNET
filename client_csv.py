@@ -20,7 +20,7 @@ CSV_FOLDER = "input_csv"
 
 OUTPUT_PATH = "output/json/csv_intelligence.json"
 
-CSV_BATCH_SIZE = 3
+CSV_BATCH_SIZE = 2
 
 client = OpenAI(
     base_url=BASE_URL,
@@ -127,7 +127,7 @@ def load_all_csv(folder_path: str) -> dict:
     return csv_data
 
 
-def batch_csv_files(csv_data, batch_size=1):
+def batch_csv_files(csv_data, batch_size=2):
 
     items = list(csv_data.items())
 
