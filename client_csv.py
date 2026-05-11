@@ -396,7 +396,7 @@ def analyze_csv_batches(
             top_p=0.8,
             max_tokens=12000,
             response_format={
-                "type": "json_object"
+                "type": "json_schema"
             }
         )
 
