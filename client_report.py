@@ -174,7 +174,7 @@ def load_intelligence_batches():
     return intelligence_batches
 
 def load_reference_report():
-    path = "FL-OPE-23 V00 Informe de Incidentes SOC CADIEM 01032026 al 31032026.pdf"
+    path = "FL-OPE-23 V01 Informe de Incidentes SOC FIC 01-04-2025 al 30-04-2026 1.pdf"
 
     if not os.path.exists(path):
         return ""
