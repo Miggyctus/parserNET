@@ -20,7 +20,7 @@ CSV_FOLDER = "input_csv"
 
 OUTPUT_PATH = "output/json/csv_intelligence.json"
 
-CSV_BATCH_SIZE = 2
+CSV_BATCH_SIZE = 1
 
 client = OpenAI(
     base_url=BASE_URL,
