@@ -15,7 +15,7 @@ MODEL_ID = "glm-4.7-flash-claude-opus-4.5-high-reasoning-distill"
 PROMPT_FILE = "prompt_report.json"
 CHART_JSON_PATH = "output/json/llm_output.json"
 REPORT_TEXT_PATH = "output/reports/llm_report.txt"
-CSV_INTELLIGENCE_PATH = "output/json/csv_intelligence.json"
+INTELLIGENCE_DIR = "output/intelligence"
 
 client = OpenAI(
     base_url=BASE_URL,
@@ -132,13 +132,46 @@ def load_chart_json():
     with open(CHART_JSON_PATH, "r", encoding="utf-8") as f:
         return json.load(f)
 
-def load_csv_intelligence():
+def load_intelligence_batches():
 
-    if not os.path.exists(CSV_INTELLIGENCE_PATH):
-        return {}
+    intelligence_batches = []
 
-    with open(CSV_INTELLIGENCE_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
+    if not os.path.exists(INTELLIGENCE_DIR):
+        return intelligence_batches
+
+    files = sorted(
+        os.listdir(INTELLIGENCE_DIR)
+    )
+
+    for file in files:
+
+        if not file.endswith(".json"):
+            continue
+
+        path = os.path.join(
+            INTELLIGENCE_DIR,
+            file
+        )
+
+        try:
+
+            with open(
+                path,
+                "r",
+                encoding="utf-8"
+            ) as f:
+
+                intelligence_batches.append(
+                    json.load(f)
+                )
+
+        except Exception as e:
+
+            print(
+                f"Failed loading {file}: {e}"
+            )
+
+    return intelligence_batches
 
 def load_reference_report():
     path = "FL-OPE-23 V00 Informe de Incidentes SOC CADIEM 01032026 al 31032026.pdf"
@@ -158,7 +191,7 @@ def load_reference_report():
 # LLM Call
 # =========================
 
-def build_section_prompt(section, csv_intelligence, reference):
+def build_section_prompt(section, intelligence_batches, reference):
     return f"""
     You are generating a SOC report section.
 
@@ -175,7 +208,7 @@ def build_section_prompt(section, csv_intelligence, reference):
     - No repetition of charts across sections
 
     === DATA ===
-    {json.dumps(csv_intelligence, separators=(',', ':'))}
+    {json.dumps(intelligence_batches, separators=(',', ':'))}
 
     === STYLE REFERENCE ===
     {reference}
@@ -183,8 +216,8 @@ def build_section_prompt(section, csv_intelligence, reference):
     Generate ONLY the section content.
     """
 
-def generate_section(section, system_prompt, csv_intelligence, reference):
-    prompt = build_section_prompt(section, csv_intelligence, reference)
+def generate_section(section, system_prompt, intelligence_batches, reference):
+    prompt = build_section_prompt(section, intelligence_batches, reference)
     maxTokens = SECTION_TOKEN_LIMITS.get(section, 2000)
     completion = client.chat.completions.create(
         model=MODEL_ID,
@@ -240,7 +273,7 @@ def generate_report():
 
     system_prompt = load_system_prompt()
     chart_data = load_chart_json()
-    csv_intelligence = load_csv_intelligence()  
+    intelligence_batches = load_intelligence_batches()
     reference = load_reference_report()
 
     sections_content ={}
@@ -251,7 +284,7 @@ def generate_report():
             content = generate_section(
                 section,
                 system_prompt,
-                csv_data,
+                intelligence_batches,
                 reference
             )
             sections_content[section] = content
