@@ -3,6 +3,7 @@ import os
 import httpx
 import re
 import requests
+import csv
 from openai import OpenAI
 from contextlib import contextmanager
 
@@ -40,7 +41,7 @@ def load_model():
 
     payload = {
         "model": MODEL_ID,
-        "context_length": 150000,
+        "context_length": 72000,
         "eval_batch_size": 256,
         "offload_kv_cache_to_gpu": True,
         "echo_load_config": True
@@ -103,7 +104,10 @@ def load_system_prompt():
         return json.load(f)["system_prompt"]
 
 
-def load_all_csv(folder_path: str) -> dict:
+def load_all_csv(
+    folder_path: str,
+    max_rows_per_chunk: int = 500
+) -> dict:
 
     csv_data = {}
 
@@ -116,16 +120,57 @@ def load_all_csv(folder_path: str) -> dict:
 
         try:
 
-            with open(file_path, "r", encoding="utf-8") as f:
-                content = f.read()
+            with open(
+                file_path,
+                "r",
+                encoding="utf-8"
+            ) as f:
 
-            csv_data[file] = content
+                reader = csv.DictReader(f)
 
-        except Exception:
-            continue
+                rows = list(reader)
+
+            # =========================
+            # small csv
+            # =========================
+
+            if len(rows) <= max_rows_per_chunk:
+
+                csv_data[file] = rows
+
+                continue
+
+            # =========================
+            # split large csv
+            # =========================
+
+            chunk_index = 1
+
+            for i in range(
+                0,
+                len(rows),
+                max_rows_per_chunk
+            ):
+
+                chunk = rows[
+                    i:i + max_rows_per_chunk
+                ]
+
+                chunk_name = (
+                    f"{file}__part_{chunk_index}"
+                )
+
+                csv_data[chunk_name] = chunk
+
+                chunk_index += 1
+
+        except Exception as e:
+
+            print(
+                f"Failed loading {file}: {e}"
+            )
 
     return csv_data
-
 
 def batch_csv_files(csv_data, batch_size=2):
 
