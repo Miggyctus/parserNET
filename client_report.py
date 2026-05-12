@@ -174,7 +174,7 @@ def load_intelligence_batches():
     return intelligence_batches
 
 def load_reference_report():
-    path = "FL-OPE-23 V01 Informe de Incidentes SOC FIC 01-04-2025 al 30-04-2026 1.pdf"
+    path = "SOC_Reporte_Modelo_NETLOGIC.pdf"
 
     if not os.path.exists(path):
         return ""
@@ -225,7 +225,7 @@ def generate_section(section, system_prompt, intelligence_batches, reference):
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt}
         ],
-        temperature=0.4,
+        temperature=0.8,
         top_p=0.85,
         max_tokens=maxTokens,
     )
