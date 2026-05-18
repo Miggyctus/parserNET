@@ -14,7 +14,7 @@ from contextlib import contextmanager
 
 BASE_URL = "http://localhost:1234/v1"
 
-MODEL_ID = "foundation-sec-8b-reasoning"
+MODEL_ID = "mistralai/ministral-3-14b-reasoning"
 
 PROMPT_FILE = "prompt_csv.json"
 
