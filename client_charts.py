@@ -275,7 +275,7 @@ OUTPUT: raw JSON only.
             {"role": "system", "content": chart_prompt},
             {"role": "user", "content": prompt}
         ],
-        temperature=0.8,
+        temperature=0.2,
         top_p=0.85,
         max_tokens=2000,
         #reasoning={"effort" : "low"}
