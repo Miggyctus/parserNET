@@ -227,7 +227,7 @@ def generate_section(section, system_prompt, intelligence_batches, reference):
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt}
         ],
-        temperature=0.2,
+        temperature=0.1,
         top_p=0.85,
         max_tokens=maxTokens,
     )
