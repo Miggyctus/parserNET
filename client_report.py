@@ -203,7 +203,8 @@ def build_section_prompt(section, intelligence_batches, reference):
     - Do NOT generate other sections
     - Use telemetry data strictly
     - Insert chart placeholders only when needed, following the naming rules
-    - Maximum 2 charts per section, only if they add value to the section
+    - NO charts for the "PORTADA E INDICE", "INTRODUCCIÓN" "RESUMEN EJECUTIVO" and "CONCLUSION" sections
+    - MAXIMUM 2 charts per section, only if they add value to the section
     - use charts only when they add real analytical value
     - NEVER reuse the same chart_identifier across sections 
     - No repetition of charts across sections
