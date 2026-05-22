@@ -24,7 +24,7 @@ OUTPUT_DIR = "output/intelligence"
 
 CSV_BATCH_SIZE = 1
 
-MAX_ROWS_PER_CHUNK = 400
+MAX_ROWS_PER_CHUNK = 250
 
 client = OpenAI(
     base_url=BASE_URL,
