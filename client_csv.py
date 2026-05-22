@@ -604,7 +604,7 @@ def analyze_csv_batches(
             ],
             temperature=0,
             top_p=0.7,
-            max_tokens=12000
+            max_tokens=15000
         )
 
         response = (
