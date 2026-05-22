@@ -228,7 +228,7 @@ def generate_section(section, system_prompt, intelligence_batches, reference):
             {"role": "user", "content": prompt}
         ],
         temperature=0.1,
-        top_p=0.85,
+        top_p=0.7,
         max_tokens=maxTokens,
     )
     message = completion.choices[0].message
