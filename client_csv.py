@@ -223,31 +223,153 @@ def batch_csv_files(
 
 def build_analysis_prompt(csv_data):
 
+    telemetry_json = json.dumps(
+        csv_data,
+        separators=(",", ":"),
+        ensure_ascii=False
+    )
+
     return f"""
-Analyze the following heterogeneous SOC telemetry datasets.
+You are a SOC telemetry intelligence engine.
 
 OBJECTIVE:
-Generate structured telemetry intelligence JSON.
 
-IMPORTANT:
-- Detect semantic meaning dynamically
+Analyze heterogeneous security telemetry datasets and generate structured SOC intelligence findings.
+
+CRITICAL REQUIREMENTS:
+
 - Detect anomalies
-- Reduce repetitive telemetry
-- Generate high-value summaries
-- Detect high-signal entities
-- Recommend useful visualizations
-- Preserve security context
-- Use ONLY provided telemetry
+- Detect suspicious activity
+- Detect malware indicators
+- Detect authentication anomalies
+- Detect network anomalies
+- Detect administrative activity
+- Detect high-risk entities
+- Detect temporal patterns
+- Detect security trends
+- Detect actionable intelligence
 
 STRICT RULES:
+
+- Use ONLY provided telemetry
+- Do NOT hallucinate
+- Do NOT invent data
 - Output JSON ONLY
-- NO markdown
-- NO explanations
-- NO prose
-- NO hallucinations
+- No markdown
+- No explanations
+- No prose outside JSON
+
+VERY IMPORTANT:
+
+You MUST generate findings with semantic classification.
+
+OUTPUT FORMAT:
+
+{{
+  "findings": [
+    {{
+      "title": "short finding title",
+
+      "summary": "analytical summary",
+
+      "severity": "low | medium | high | critical",
+
+      "tags": [
+        "authentication",
+        "malware",
+        "network",
+        "active_directory"
+      ],
+
+      "recommended_sections": [
+        "TOP LOGIN",
+        "DIRECTORIO ACTIVO"
+      ],
+
+      "chart_candidate": true,
+
+      "chart_priority": 85,
+
+      "supporting_data": [
+        {{
+          "label": "failed_logins",
+          "value": 1250
+        }}
+      ]
+    }}
+  ]
+}}
+
+SECTION OPTIONS:
+
+- "RESUMEN DE CASOS"
+- "TOP DE ORIGEN DE ATAQUES"
+- "ACTIVIDADES SOSPECHOSAS – MALWARE - AMENAZAS"
+- "TOP LOGIN"
+- "DIRECTORIO ACTIVO"
+- "ACTIVIDAD DE USUARIOS ADMINISTRADORES"
+- "CAMBIOS EN EQUIPOS DE COMUNICACIONES"
+- "REPORTE DE ALERTAS, INCIDENTES Y SUGERENCIAS"
+- "REPORTE DE VOLUMEN DE LOGS"
+
+TAGGING RULES:
+
+Use semantic tags such as:
+
+- authentication
+- failed_logins
+- successful_logins
+- malware
+- endpoint
+- firewall
+- network
+- traffic
+- active_directory
+- admin_activity
+- vpn
+- geolocation
+- suspicious_activity
+- brute_force
+- policy_change
+- communications
+- logs
+- dns
+- proxy
+- phishing
+- threat
+- anomaly
+
+CHART RULES:
+
+chart_candidate:
+- true ONLY if visualization adds analytical value
+- false if chart would not improve understanding
+
+chart_priority:
+- integer from 1 to 100
+- higher means more valuable visualization
+
+SEVERITY RULES:
+
+critical:
+- confirmed compromise
+- severe malware
+- massive attack activity
+
+high:
+- brute force
+- repeated failed logins
+- suspicious admin activity
+- high-risk anomalies
+
+medium:
+- suspicious but inconclusive activity
+
+low:
+- informational findings
 
 TELEMETRY DATA:
-{json.dumps(csv_data, separators=(",", ":"), ensure_ascii=False)}
+{telemetry_json}
 
 OUTPUT:
 Raw JSON only.
@@ -320,6 +442,94 @@ def clean_json(raw: str):
             f"Failed parsing JSON: {e}"
         )
 
+def validate_findings_structure(parsed):
+
+    if not isinstance(parsed, dict):
+        return {"findings": []}
+
+    findings = parsed.get("findings")
+
+    if not isinstance(findings, list):
+        return {"findings": []}
+
+    normalized_findings = []
+
+    for finding in findings:
+
+        if not isinstance(finding, dict):
+            continue
+
+        normalized = {
+            "title": str(
+                finding.get("title", "")
+            ),
+
+            "summary": str(
+                finding.get("summary", "")
+            ),
+
+            "severity": str(
+                finding.get(
+                    "severity",
+                    "medium"
+                )
+            ).lower(),
+
+            "tags": finding.get(
+                "tags",
+                []
+            ),
+
+            "recommended_sections": finding.get(
+                "recommended_sections",
+                []
+            ),
+
+            "chart_candidate": bool(
+                finding.get(
+                    "chart_candidate",
+                    False
+                )
+            ),
+
+            "chart_priority": int(
+                finding.get(
+                    "chart_priority",
+                    50
+                )
+            ),
+
+            "supporting_data": finding.get(
+                "supporting_data",
+                []
+            )
+        }
+
+        if not isinstance(
+            normalized["tags"],
+            list
+        ):
+            normalized["tags"] = []
+
+        if not isinstance(
+            normalized["recommended_sections"],
+            list
+        ):
+            normalized["recommended_sections"] = []
+
+        if not isinstance(
+            normalized["supporting_data"],
+            list
+        ):
+            normalized["supporting_data"] = []
+
+        normalized_findings.append(
+            normalized
+        )
+
+    return {
+        "findings": normalized_findings
+    }
 
 # =========================
 # Save Batch Intelligence
@@ -406,6 +616,9 @@ def analyze_csv_batches(
 
         parsed = clean_json(response)
 
+        parsed = validate_findings_structure(
+            parsed
+        )
         save_batch_intelligence(
             idx,
             parsed
