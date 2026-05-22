@@ -393,7 +393,7 @@ def analyze_csv_batches(
                 }
             ],
             temperature=0,
-            top_p=0.8,
+            top_p=0.7,
             max_tokens=12000
         )
 

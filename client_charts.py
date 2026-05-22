@@ -276,7 +276,7 @@ OUTPUT: raw JSON only.
             {"role": "user", "content": prompt}
         ],
         temperature=0.2,
-        top_p=0.85,
+        top_p=0.7,
         max_tokens=2000,
         #reasoning={"effort" : "low"}
     )
