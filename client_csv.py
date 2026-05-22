@@ -8,9 +8,9 @@ import csv
 from openai import OpenAI
 from contextlib import contextmanager
 
-# =========================
-# Configuración
-# =========================
+# =========================================================
+# CONFIG
+# =========================================================
 
 BASE_URL = "http://localhost:1234/v1"
 
@@ -26,6 +26,12 @@ CSV_BATCH_SIZE = 1
 
 MAX_ROWS_PER_CHUNK = 250
 
+MAX_RETRIES = 3
+
+# =========================================================
+# CLIENT
+# =========================================================
+
 client = OpenAI(
     base_url=BASE_URL,
     api_key="lm-studio",
@@ -34,10 +40,9 @@ client = OpenAI(
 
 MODEL_INSTANCE_ID = None
 
-
-# =========================
-# Model Load / Unload
-# =========================
+# =========================================================
+# MODEL LOAD / UNLOAD
+# =========================================================
 
 def load_model():
 
@@ -48,6 +53,7 @@ def load_model():
         "context_length": 72000,
         "eval_batch_size": 256,
         "offload_kv_cache_to_gpu": True,
+        "flash_attention": True,
         "echo_load_config": True
     }
 
@@ -58,6 +64,7 @@ def load_model():
     )
 
     if response.status_code != 200:
+
         raise RuntimeError(
             f"Failed to load model: {response.text}"
         )
@@ -65,13 +72,18 @@ def load_model():
     data = response.json()
 
     if data.get("status") != "loaded":
+
         raise RuntimeError(
             f"Model failed to load: {data}"
         )
 
-    MODEL_INSTANCE_ID = data.get("instance_id")
+    MODEL_INSTANCE_ID = data.get(
+        "instance_id"
+    )
 
-    print("CSV Analysis model loaded")
+    print(
+        "CSV Analysis model loaded"
+    )
 
 
 def unload_model():
@@ -83,13 +95,17 @@ def unload_model():
 
     requests.post(
         "http://localhost:1234/api/v1/models/unload",
-        json={"instance_id": MODEL_INSTANCE_ID},
+        json={
+            "instance_id": MODEL_INSTANCE_ID
+        },
         timeout=60
     )
 
     MODEL_INSTANCE_ID = None
 
-    print("CSV Analysis model unloaded")
+    print(
+        "CSV Analysis model unloaded"
+    )
 
 
 @contextmanager
@@ -103,10 +119,9 @@ def model_session():
     finally:
         unload_model()
 
-
-# =========================
-# Utils
-# =========================
+# =========================================================
+# UTILS
+# =========================================================
 
 def load_system_prompt():
 
@@ -116,8 +131,14 @@ def load_system_prompt():
         encoding="utf-8"
     ) as f:
 
-        return json.load(f)["system_prompt"]
+        return json.load(f)[
+            "system_prompt"
+        ]
 
+
+# =========================================================
+# CSV LOADER
+# =========================================================
 
 def load_all_csv(
     folder_path: str,
@@ -148,9 +169,9 @@ def load_all_csv(
 
                 rows = list(reader)
 
-            # =========================
-            # Small CSV
-            # =========================
+            # =================================================
+            # SMALL CSV
+            # =================================================
 
             if len(rows) <= max_rows_per_chunk:
 
@@ -158,9 +179,9 @@ def load_all_csv(
 
                 continue
 
-            # =========================
-            # Chunk Large CSV
-            # =========================
+            # =================================================
+            # CHUNK LARGE CSV
+            # =================================================
 
             chunk_index = 1
 
@@ -193,12 +214,18 @@ def load_all_csv(
     return csv_data
 
 
+# =========================================================
+# BATCHING
+# =========================================================
+
 def batch_csv_files(
     csv_data,
-    batch_size=2
+    batch_size=CSV_BATCH_SIZE
 ):
 
-    items = list(csv_data.items())
+    items = list(
+        csv_data.items()
+    )
 
     batches = []
 
@@ -217,9 +244,9 @@ def batch_csv_files(
     return batches
 
 
-# =========================
-# Prompt Builder
-# =========================
+# =========================================================
+# PROMPT BUILDER
+# =========================================================
 
 def build_analysis_prompt(csv_data):
 
@@ -234,20 +261,7 @@ You are a SOC telemetry intelligence engine.
 
 OBJECTIVE:
 
-Analyze heterogeneous security telemetry datasets and generate structured SOC intelligence findings.
-
-CRITICAL REQUIREMENTS:
-
-- Detect anomalies
-- Detect suspicious activity
-- Detect malware indicators
-- Detect authentication anomalies
-- Detect network anomalies
-- Detect administrative activity
-- Detect high-risk entities
-- Detect temporal patterns
-- Detect security trends
-- Detect actionable intelligence
+Analyze security telemetry and generate concise structured SOC findings.
 
 STRICT RULES:
 
@@ -259,9 +273,19 @@ STRICT RULES:
 - No explanations
 - No prose outside JSON
 
-VERY IMPORTANT:
+IMPORTANT:
 
-You MUST generate findings with semantic classification.
+Generate concise consolidated findings.
+
+Merge related telemetry into unified analytical findings.
+
+Avoid redundant findings describing the same activity.
+
+Each finding must represent an analytical insight, not individual events.
+
+Each summary must be under 60 words.
+
+Maximum 3 key_evidence items per finding.
 
 OUTPUT FORMAT:
 
@@ -270,31 +294,31 @@ OUTPUT FORMAT:
     {{
       "title": "short finding title",
 
-      "summary": "analytical summary",
+      "finding_type": "authentication_anomaly",
+
+      "summary": "concise analytical summary",
 
       "severity": "low | medium | high | critical",
 
       "tags": [
         "authentication",
-        "malware",
-        "network",
-        "active_directory"
+        "vpn",
+        "failed_logins"
       ],
 
       "recommended_sections": [
         "TOP LOGIN",
-        "DIRECTORIO ACTIVO"
+        "REPORTE DE ALERTAS, INCIDENTES Y SUGERENCIAS"
       ],
 
       "chart_candidate": true,
 
       "chart_priority": 85,
 
-      "supporting_data": [
-        {{
-          "label": "failed_logins",
-          "value": 1250
-        }}
+      "key_evidence": [
+        "3812 failed VPN logins",
+        "17 external IPs involved",
+        "5 privileged accounts targeted"
       ]
     }}
   ]
@@ -312,62 +336,6 @@ SECTION OPTIONS:
 - "REPORTE DE ALERTAS, INCIDENTES Y SUGERENCIAS"
 - "REPORTE DE VOLUMEN DE LOGS"
 
-TAGGING RULES:
-
-Use semantic tags such as:
-
-- authentication
-- failed_logins
-- successful_logins
-- malware
-- endpoint
-- firewall
-- network
-- traffic
-- active_directory
-- admin_activity
-- vpn
-- geolocation
-- suspicious_activity
-- brute_force
-- policy_change
-- communications
-- logs
-- dns
-- proxy
-- phishing
-- threat
-- anomaly
-
-CHART RULES:
-
-chart_candidate:
-- true ONLY if visualization adds analytical value
-- false if chart would not improve understanding
-
-chart_priority:
-- integer from 1 to 100
-- higher means more valuable visualization
-
-SEVERITY RULES:
-
-critical:
-- confirmed compromise
-- severe malware
-- massive attack activity
-
-high:
-- brute force
-- repeated failed logins
-- suspicious admin activity
-- high-risk anomalies
-
-medium:
-- suspicious but inconclusive activity
-
-low:
-- informational findings
-
 TELEMETRY DATA:
 {telemetry_json}
 
@@ -376,9 +344,29 @@ Raw JSON only.
 """
 
 
-# =========================
-# JSON Cleaner
-# =========================
+# =========================================================
+# JSON CLEANER
+# =========================================================
+
+def attempt_json_repair(candidate):
+
+    try:
+
+        last_brace = candidate.rfind("}")
+
+        if last_brace != -1:
+
+            repaired = candidate[
+                :last_brace + 1
+            ]
+
+            return json.loads(repaired)
+
+    except Exception:
+        pass
+
+    return None
+
 
 def clean_json(raw: str):
 
@@ -415,7 +403,9 @@ def clean_json(raw: str):
 
     candidate = match.group(0)
 
-    # remove trailing commas
+    # =====================================================
+    # CLEAN COMMON ISSUES
+    # =====================================================
 
     candidate = re.sub(
         r",\s*([}\]])",
@@ -435,12 +425,24 @@ def clean_json(raw: str):
     except json.JSONDecodeError as e:
 
         print("\n========= INVALID JSON =========")
-        print(candidate[:4000])
+        print(candidate[:5000])
         print("================================\n")
+
+        repaired = attempt_json_repair(
+            candidate
+        )
+
+        if repaired is not None:
+            return repaired
 
         raise RuntimeError(
             f"Failed parsing JSON: {e}"
         )
+
+
+# =========================================================
+# FINDING VALIDATION
+# =========================================================
 
 def validate_findings_structure(parsed):
 
@@ -460,8 +462,16 @@ def validate_findings_structure(parsed):
             continue
 
         normalized = {
+
             "title": str(
                 finding.get("title", "")
+            ),
+
+            "finding_type": str(
+                finding.get(
+                    "finding_type",
+                    "general"
+                )
             ),
 
             "summary": str(
@@ -499,11 +509,15 @@ def validate_findings_structure(parsed):
                 )
             ),
 
-            "supporting_data": finding.get(
-                "supporting_data",
+            "key_evidence": finding.get(
+                "key_evidence",
                 []
             )
         }
+
+        # =================================================
+        # NORMALIZATION
+        # =================================================
 
         if not isinstance(
             normalized["tags"],
@@ -518,10 +532,30 @@ def validate_findings_structure(parsed):
             normalized["recommended_sections"] = []
 
         if not isinstance(
-            normalized["supporting_data"],
+            normalized["key_evidence"],
             list
         ):
-            normalized["supporting_data"] = []
+            normalized["key_evidence"] = []
+
+        # =================================================
+        # LIMIT SECTION SPAM
+        # =================================================
+
+        normalized["recommended_sections"] = (
+            normalized[
+                "recommended_sections"
+            ][:3]
+        )
+
+        # =================================================
+        # LIMIT EVIDENCE SIZE
+        # =================================================
+
+        normalized["key_evidence"] = (
+            normalized[
+                "key_evidence"
+            ][:3]
+        )
 
         normalized_findings.append(
             normalized
@@ -531,9 +565,10 @@ def validate_findings_structure(parsed):
         "findings": normalized_findings
     }
 
-# =========================
-# Save Batch Intelligence
-# =========================
+
+# =========================================================
+# SAVE BATCH INTELLIGENCE
+# =========================================================
 
 def save_batch_intelligence(
     batch_index,
@@ -568,9 +603,9 @@ def save_batch_intelligence(
     )
 
 
-# =========================
-# Batch LLM Analysis
-# =========================
+# =========================================================
+# BATCH LLM ANALYSIS
+# =========================================================
 
 def analyze_csv_batches(
     system_prompt,
@@ -590,44 +625,79 @@ def analyze_csv_batches(
             batch
         )
 
-        completion = client.chat.completions.create(
-            model=MODEL_ID,
-            messages=[
-                {
-                    "role": "system",
-                    "content": system_prompt
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            temperature=0,
-            top_p=0.7,
-            max_tokens=15000
-        )
+        parsed = None
 
-        response = (
-            completion
-            .choices[0]
-            .message
-            .content
-        )
+        for attempt in range(
+            MAX_RETRIES
+        ):
 
-        parsed = clean_json(response)
+            try:
 
-        parsed = validate_findings_structure(
-            parsed
-        )
+                completion = client.chat.completions.create(
+
+                    model=MODEL_ID,
+
+                    messages=[
+                        {
+                            "role": "system",
+                            "content": system_prompt
+                        },
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+
+                    temperature=0,
+
+                    top_p=0.15,
+
+                    max_tokens=4500
+                )
+
+                response = (
+                    completion
+                    .choices[0]
+                    .message
+                    .content
+                )
+
+                parsed = clean_json(
+                    response
+                )
+
+                parsed = (
+                    validate_findings_structure(
+                        parsed
+                    )
+                )
+
+                break
+
+            except Exception as e:
+
+                print(
+                    f"Attempt "
+                    f"{attempt + 1} failed: {e}"
+                )
+
+        if parsed is None:
+
+            print(
+                f"Skipping batch {idx + 1}"
+            )
+
+            continue
+
         save_batch_intelligence(
             idx,
             parsed
         )
 
 
-# =========================
-# Main Pipeline
-# =========================
+# =========================================================
+# MAIN PIPELINE
+# =========================================================
 
 def generate_csv_intelligence():
 
