@@ -15,7 +15,7 @@ from typing import List, Dict, Any
 
 BASE_URL = "http://localhost:1234/v1"
 
-MODEL_ID = "glm-4.7-flash-claude-opus-4.5-high-reasoning-distill"
+MODEL_ID = "gpt-oss-20b"
 
 PROMPT_FILE = "prompt_report.json"
 
