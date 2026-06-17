@@ -52,19 +52,19 @@ SECTIONS = [
 ]
 
 SECTION_TOKEN_LIMITS = {
-    "PORTADA E INDICE": 2000,
-    "RESUMEN EJECUTIVO": 2500,
-    "INTRODUCCIÓN": 2000,
-    "EQUIPOS MONITOREADOS A LA FECHA": 3000,
-    "RESUMEN DE CASOS": 3000,
-    "TOP DE ORIGEN DE ATAQUES": 3500,
-    "ACTIVIDADES SOSPECHOSAS – MALWARE - AMENAZAS": 4000,
-    "TOP LOGIN": 2500,
-    "DIRECTORIO ACTIVO": 2500,
-    "ACTIVIDAD DE USUARIOS ADMINISTRADORES": 2500,
-    "CAMBIOS EN EQUIPOS DE COMUNICACIONES": 2000,
-    "REPORTE DE ALERTAS, INCIDENTES Y SUGERENCIAS": 3500,
-    "REPORTE DE VOLUMEN DE LOGS": 2000,
+    "PORTADA E INDICE": 1500,
+    "RESUMEN EJECUTIVO": 2000,
+    "INTRODUCCIÓN": 1500,
+    "EQUIPOS MONITOREADOS A LA FECHA": 2000,
+    "RESUMEN DE CASOS": 2500,
+    "TOP DE ORIGEN DE ATAQUES": 5000,
+    "ACTIVIDADES SOSPECHOSAS – MALWARE - AMENAZAS": 5500,
+    "TOP LOGIN": 6000,
+    "DIRECTORIO ACTIVO": 5500,
+    "ACTIVIDAD DE USUARIOS ADMINISTRADORES": 6000,
+    "CAMBIOS EN EQUIPOS DE COMUNICACIONES": 2500,
+    "REPORTE DE ALERTAS, INCIDENTES Y SUGERENCIAS": 6000,
+    "REPORTE DE VOLUMEN DE LOGS": 2500,
     "CONCLUSION": 2000
 }
 
@@ -172,8 +172,8 @@ def build_section_prompt(
     previous_sections_text: str = ""
 ) -> str:
     """
-    Simplified prompt that avoids complexity and repetition.
-    Key: provide context from previous sections to avoid repeating them.
+    Structured prompt that guides substantive analysis from findings.
+    Key: force the LLM to actually analyze and structure findings content.
     """
 
     findings_json = json.dumps(
@@ -185,37 +185,43 @@ def build_section_prompt(
     context_instruction = ""
     if previous_sections_text:
         context_instruction = f"""
-CONTEXT FROM PREVIOUS SECTIONS:
-(Use this to avoid repeating what's already been written. Reference earlier sections if needed, don't duplicate.)
-
-{previous_sections_text[:2000]}
+PREVIOUSLY COVERED (don't repeat):
+{previous_sections_text[:1500]}
 
 ---
+AVOID REPEATING the above. Focus only on findings NOT yet discussed.
 """
 
     no_chart_instruction = ""
     if section in NO_CHART_SECTIONS:
-        no_chart_instruction = "Do NOT insert chart placeholders in this section."
+        no_chart_instruction = "\n\nDo NOT insert any chart placeholders {{{{CHART:...}}}} in this section."
 
-    return f"""Generate the "{section}" section for a formal SOC monthly report.
+    return f"""Generate ONLY the "{section}" section for a formal SOC audit report.
 
-FINDINGS FOR THIS SECTION:
+FINDINGS TO ANALYZE ({len(findings)} findings):
 {findings_json}
 
 {context_instruction}
 
-INSTRUCTIONS:
-1. Write ONLY this section ({section})
-2. Use formal, professional SOC language (Spanish)
-3. Focus on findings relevant to this section
-4. Do NOT repeat information from previous sections
-5. Keep narrative concise and analytical
-6. Each statement must be data-driven (use findings provided)
-7. Maximum 2 chart placeholders per section (format: {{{{CHART: chart_id}}}})
-{no_chart_instruction}
+STRUCTURE (mandatory):
+1. INTRO: 1-2 sentences summarizing the key findings/themes for this section
+2. FINDINGS ANALYSIS: For EACH finding (in order), write 2-3 sentences covering:
+   - What was detected (from title + summary)
+   - The evidence (from key_evidence)
+   - The significance/implication
+3. PATTERNS: If multiple findings share a theme, identify the pattern
+4. RECOMMENDATIONS: 2-3 bulleted action items specific to these findings
+
+STYLE:
+- Professional SOC language (Spanish, formal)
+- Data-driven (cite numbers from key_evidence)
+- Analytical (explain implications, not just facts)
+- Concise (total section ~400-600 words)
 
 OUTPUT:
-Generate only the section content. No headers, no section title—just the body.
+Raw section content only. No section header, no title—just the body text starting with the intro.
+Maximum 2 chart placeholders total (format: {{{{CHART: chart_id}}}})
+{no_chart_instruction}
 """
 
 # =========================================================
