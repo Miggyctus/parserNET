@@ -3,29 +3,20 @@ import os
 import re
 import httpx
 import requests
-import fitz
 
 from openai import OpenAI
 from contextlib import contextmanager
-from typing import List, Dict, Any
+from typing import Dict, Any
 
 # =========================================================
 # CONFIG
 # =========================================================
 
 BASE_URL = "http://localhost:1234/v1"
-
 MODEL_ID = "gpt-oss-20b"
-
 PROMPT_FILE = "prompt_report.json"
-
 REPORT_TEXT_PATH = "output/reports/llm_report.txt"
-
-INTELLIGENCE_DIR = "output/intelligence"
-
-REFERENCE_REPORT_PATH = "SOC_Reporte_Modelo_NETLOGIC.pdf"
-
-MAX_CHARTS_PER_SECTION = 2
+CONSOLIDATED_FINDINGS_PATH = "output/consolidated_findings.json"
 
 # =========================================================
 # CLIENT
@@ -37,8 +28,10 @@ client = OpenAI(
     http_client=httpx.Client(timeout=9999.0)
 )
 
+MODEL_INSTANCE_ID = None
+
 # =========================================================
-# SECTION CONFIG
+# SECTIONS (IN ORDER)
 # =========================================================
 
 SECTIONS = [
@@ -59,20 +52,20 @@ SECTIONS = [
 ]
 
 SECTION_TOKEN_LIMITS = {
-    "PORTADA E INDICE": 2800,
-    "RESUMEN EJECUTIVO": 3000,
-    "INTRODUCCIÓN": 2500,
-    "EQUIPOS MONITOREADOS A LA FECHA": 7000,
-    "RESUMEN DE CASOS": 8000,
-    "TOP DE ORIGEN DE ATAQUES": 7000,
-    "ACTIVIDADES SOSPECHOSAS – MALWARE - AMENAZAS": 8000,
-    "TOP LOGIN": 5000,
-    "DIRECTORIO ACTIVO": 7000,
-    "ACTIVIDAD DE USUARIOS ADMINISTRADORES": 5000,
-    "CAMBIOS EN EQUIPOS DE COMUNICACIONES": 4500,
-    "REPORTE DE ALERTAS, INCIDENTES Y SUGERENCIAS": 9000,
-    "REPORTE DE VOLUMEN DE LOGS": 5000,
-    "CONCLUSION": 3500
+    "PORTADA E INDICE": 2000,
+    "RESUMEN EJECUTIVO": 2500,
+    "INTRODUCCIÓN": 2000,
+    "EQUIPOS MONITOREADOS A LA FECHA": 3000,
+    "RESUMEN DE CASOS": 3000,
+    "TOP DE ORIGEN DE ATAQUES": 3500,
+    "ACTIVIDADES SOSPECHOSAS – MALWARE - AMENAZAS": 4000,
+    "TOP LOGIN": 2500,
+    "DIRECTORIO ACTIVO": 2500,
+    "ACTIVIDAD DE USUARIOS ADMINISTRADORES": 2500,
+    "CAMBIOS EN EQUIPOS DE COMUNICACIONES": 2000,
+    "REPORTE DE ALERTAS, INCIDENTES Y SUGERENCIAS": 3500,
+    "REPORTE DE VOLUMEN DE LOGS": 2000,
+    "CONCLUSION": 2000
 }
 
 NO_CHART_SECTIONS = {
@@ -86,11 +79,7 @@ NO_CHART_SECTIONS = {
 # MODEL SESSION
 # =========================================================
 
-MODEL_INSTANCE_ID = None
-
-
 def load_model():
-
     global MODEL_INSTANCE_ID
 
     payload = {
@@ -109,24 +98,16 @@ def load_model():
     )
 
     if response.status_code != 200:
-        raise RuntimeError(
-            f"Failed to load model: {response.text}"
-        )
+        raise RuntimeError(f"Failed to load model: {response.text}")
 
     data = response.json()
-
     if data.get("status") != "loaded":
-        raise RuntimeError(
-            f"Model failed to load: {data}"
-        )
+        raise RuntimeError(f"Model failed to load: {data}")
 
     MODEL_INSTANCE_ID = data.get("instance_id")
-
     print("Report model loaded")
 
-
 def unload_model():
-
     global MODEL_INSTANCE_ID
 
     if not MODEL_INSTANCE_ID:
@@ -139,202 +120,61 @@ def unload_model():
     )
 
     MODEL_INSTANCE_ID = None
-
     print("Report model unloaded")
-
 
 @contextmanager
 def model_session():
-
     load_model()
-
     try:
         yield
-
     finally:
         unload_model()
 
-
 # =========================================================
-# FILE LOADERS
+# LOADERS
 # =========================================================
 
 def load_system_prompt():
-
-    with open(
-        PROMPT_FILE,
-        "r",
-        encoding="utf-8"
-    ) as f:
-
+    with open(PROMPT_FILE, "r", encoding="utf-8") as f:
         return json.load(f)["system_prompt"]
 
+def load_consolidated_findings() -> Dict[str, Any]:
+    if not os.path.exists(CONSOLIDATED_FINDINGS_PATH):
+        return {"findings": [], "by_section": {}}
 
-def load_reference_style():
-
-    if not os.path.exists(
-        REFERENCE_REPORT_PATH
-    ):
-        return ""
-
-    pages = []
-
-    with fitz.open(
-        REFERENCE_REPORT_PATH
-    ) as doc:
-
-        for page in doc:
-
-            pages.append(
-                page.get_text()
-            )
-
-    full_text = "\n".join(pages)
-
-    # =====================================================
-    # compact style guide
-    # =====================================================
-
-    compact_style = full_text[:12000]
-
-    return compact_style
-
-
-def load_intelligence_batches():
-
-    intelligence_batches = []
-
-    if not os.path.exists(INTELLIGENCE_DIR):
-        return intelligence_batches
-
-    files = sorted(
-        os.listdir(INTELLIGENCE_DIR)
-    )
-
-    for file in files:
-
-        if not file.endswith(".json"):
-            continue
-
-        path = os.path.join(
-            INTELLIGENCE_DIR,
-            file
-        )
-
-        try:
-
-            with open(
-                path,
-                "r",
-                encoding="utf-8"
-            ) as f:
-
-                intelligence_batches.append(
-                    json.load(f)
-                )
-
-        except Exception as e:
-
-            print(
-                f"Failed loading {file}: {e}"
-            )
-
-    return intelligence_batches
-
+    with open(CONSOLIDATED_FINDINGS_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 # =========================================================
 # FINDING RETRIEVAL
 # =========================================================
 
-def retrieve_findings_for_section(
-    section: str,
-    intelligence_batches: List[Dict[str, Any]]
-) -> List[Dict[str, Any]]:
-
-    relevant_findings = []
-
-    for batch in intelligence_batches:
-
-        findings = batch.get(
-            "findings",
-            []
-        )
-
-        if not isinstance(findings, list):
-            continue
-
-        for finding in findings:
-
-            if not isinstance(finding, dict):
-                continue
-
-            recommended_sections = finding.get(
-                "recommended_sections",
-                []
-            )
-
-            if section in recommended_sections:
-
-                relevant_findings.append(
-                    finding
-                )
-
-    return relevant_findings
-
+def get_findings_for_section(section: str, consolidated: Dict[str, Any]):
+    """Get findings assigned to this section."""
+    by_section = consolidated.get("by_section", {})
+    return by_section.get(section, [])
 
 # =========================================================
 # CHART LIMITER
 # =========================================================
 
-def enforce_chart_limits(
-    content: str,
-    max_charts: int = MAX_CHARTS_PER_SECTION
-) -> str:
-
-    pattern = r"\{\{CHART:.*?\}\}"
-
-    matches = list(
-        re.finditer(
-            pattern,
-            content,
-            flags=re.DOTALL
-        )
-    )
-
-    if len(matches) <= max_charts:
-        return content
-
-    for match in matches[max_charts:]:
-
-        content = content.replace(
-            match.group(0),
-            ""
-        )
-
-    return content
-
-
 def remove_all_charts(content: str) -> str:
-
     pattern = r"\{\{CHART:.*?\}\}"
-
-    return re.sub(
-        pattern,
-        "",
-        content,
-        flags=re.DOTALL
-    )
-
+    return re.sub(pattern, "", content, flags=re.DOTALL)
 
 # =========================================================
-# PROMPT BUILDERS
+# PROMPT BUILDERS (SIMPLIFIED)
 # =========================================================
 
 def build_section_prompt(
     section: str,
-    findings: List[Dict[str, Any]],
-    reference_style: str
-):
+    findings: list,
+    previous_sections_text: str = ""
+) -> str:
+    """
+    Simplified prompt that avoids complexity and repetition.
+    Key: provide context from previous sections to avoid repeating them.
+    """
 
     findings_json = json.dumps(
         findings,
@@ -342,51 +182,41 @@ def build_section_prompt(
         ensure_ascii=False
     )
 
-    no_chart_instruction = ""
+    context_instruction = ""
+    if previous_sections_text:
+        context_instruction = f"""
+CONTEXT FROM PREVIOUS SECTIONS:
+(Use this to avoid repeating what's already been written. Reference earlier sections if needed, don't duplicate.)
 
-    if section in NO_CHART_SECTIONS:
+{previous_sections_text[:2000]}
 
-        no_chart_instruction = """
-- DO NOT insert chart placeholders
-- DO NOT suggest charts
+---
 """
 
-    return f"""
-You are generating a SOC report section.
+    no_chart_instruction = ""
+    if section in NO_CHART_SECTIONS:
+        no_chart_instruction = "Do NOT insert chart placeholders in this section."
 
-SECTION:
-{section}
+    return f"""Generate the "{section}" section for a formal SOC monthly report.
 
-STRICT RULES:
-
-- Generate ONLY this section
-- Do NOT generate other sections
-- Use ONLY provided findings
-- Do NOT hallucinate telemetry
-- Use professional SOC reporting tone
-- Keep narrative concise and analytical
-- Avoid repetitive explanations
-- Avoid generic cybersecurity filler
-
-CHART RULES:
-
-{no_chart_instruction}
-
-- Insert charts ONLY if they provide real analytical value
-- Maximum 2 charts
-- Never repeat chart identifiers
-- Use chart placeholders only when justified
-
-AVAILABLE FINDINGS:
+FINDINGS FOR THIS SECTION:
 {findings_json}
 
-STYLE GUIDE:
-{reference_style}
+{context_instruction}
+
+INSTRUCTIONS:
+1. Write ONLY this section ({section})
+2. Use formal, professional SOC language (Spanish)
+3. Focus on findings relevant to this section
+4. Do NOT repeat information from previous sections
+5. Keep narrative concise and analytical
+6. Each statement must be data-driven (use findings provided)
+7. Maximum 2 chart placeholders per section (format: {{{{CHART: chart_id}}}})
+{no_chart_instruction}
 
 OUTPUT:
-Generate ONLY the section content.
+Generate only the section content. No headers, no section title—just the body.
 """
-
 
 # =========================================================
 # SECTION GENERATION
@@ -395,180 +225,142 @@ Generate ONLY the section content.
 def generate_section(
     section: str,
     system_prompt: str,
-    findings: List[Dict[str, Any]],
-    reference_style: str
-):
+    findings: list,
+    previous_sections_text: str = ""
+) -> str:
+    """
+    Generate a single section with context awareness.
+    Previous sections passed in to prevent repetition.
+    """
 
-    prompt = build_section_prompt(
-        section,
-        findings,
-        reference_style
-    )
+    prompt = build_section_prompt(section, findings, previous_sections_text)
+    max_tokens = SECTION_TOKEN_LIMITS.get(section, 2000)
 
-    max_tokens = SECTION_TOKEN_LIMITS.get(
-        section,
-        3000
-    )
-
-    completion = client.chat.completions.create(
-        model=MODEL_ID,
-
-        messages=[
-            {
-                "role": "system",
-                "content": system_prompt
-            },
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ],
-
-        temperature=0.05,
-
-        top_p=0.35,
-
-        max_tokens=max_tokens
-    )
-
-    message = completion.choices[0].message
-
-    if not message or not message.content:
-
-        raise RuntimeError(
-            f"Empty response for section: {section}"
+    try:
+        completion = client.chat.completions.create(
+            model=MODEL_ID,
+            messages=[
+                {
+                    "role": "system",
+                    "content": system_prompt
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0.05,
+            top_p=0.35,
+            max_tokens=max_tokens
         )
 
-    content = message.content.strip()
+        message = completion.choices[0].message
+        if not message or not message.content:
+            raise RuntimeError(f"Empty response for section: {section}")
 
-    # =====================================================
-    # enforce chart rules
-    # =====================================================
+        content = message.content.strip()
 
-    if section in NO_CHART_SECTIONS:
+        # Enforce chart rules
+        if section in NO_CHART_SECTIONS:
+            content = remove_all_charts(content)
+        else:
+            # Limit to max 2 charts
+            charts = re.findall(r"\{\{CHART:.*?\}\}", content, flags=re.DOTALL)
+            if len(charts) > 2:
+                content = re.sub(r"\{\{CHART:.*?\}\}", "", content, flags=re.DOTALL, count=len(charts) - 2)
 
-        content = remove_all_charts(
-            content
-        )
+        return content
 
-    else:
-
-        content = enforce_chart_limits(
-            content
-        )
-
-    return content
-
+    except Exception as e:
+        print(f"Error generating {section}: {e}")
+        return ""
 
 # =========================================================
 # REPORT ASSEMBLY
 # =========================================================
 
-def assemble_report(
-    sections_content: Dict[str, str]
-):
-
+def assemble_report(sections_content: Dict[str, str]) -> str:
+    """Assemble final report from section contents."""
     report = []
 
     for section in SECTIONS:
-
-        content = sections_content.get(
-            section,
-            ""
-        )
-
-        report.append(
-            f"\n\n# {section}\n\n{content}"
-        )
+        content = sections_content.get(section, "")
+        if content.strip():
+            report.append(f"\n# {section}\n\n{content}")
 
     return "\n".join(report)
 
-
 # =========================================================
-# REPORT GENERATION
+# MAIN GENERATION
 # =========================================================
 
 def generate_report():
+    """
+    Sequential section generation with context awareness.
+    Each section knows about previous sections to prevent repetition.
+    """
+
+    print("Loading consolidated findings...")
+    consolidated = load_consolidated_findings()
+    total_findings = consolidated.get("total_findings", 0)
+    print(f"  Loaded {total_findings} consolidated findings")
 
     system_prompt = load_system_prompt()
-
-    reference_style = load_reference_style()
-
-    intelligence_batches = load_intelligence_batches()
-
     sections_content = {}
+    accumulated_text = ""
 
     with model_session():
 
         for section in SECTIONS:
 
-            print(
-                f"Generating section: {section}"
-            )
+            print(f"Generating: {section}")
 
-            # =============================================
-            # SECTION-SCOPED CONTEXT
-            # =============================================
+            # Get findings for this section
+            findings = get_findings_for_section(section, consolidated)
+            finding_count = len(findings)
+            print(f"  {finding_count} findings for this section")
 
-            findings = retrieve_findings_for_section(
-                section,
-                intelligence_batches
-            )
-
-            print(
-                f"Retrieved findings: "
-                f"{len(findings)}"
-            )
-
+            # Generate with context from previous sections
             content = generate_section(
                 section=section,
                 system_prompt=system_prompt,
                 findings=findings,
-                reference_style=reference_style
+                previous_sections_text=accumulated_text
             )
 
             sections_content[section] = content
+            accumulated_text += f"\n# {section}\n{content}"
 
-    final_report = assemble_report(
-        sections_content
-    )
+            if not content.strip():
+                print(f"  WARNING: Empty content for {section}")
 
-    os.makedirs(
-        "output/reports",
-        exist_ok=True
-    )
+    # Assemble final report
+    final_report = assemble_report(sections_content)
 
-    with open(
-        REPORT_TEXT_PATH,
-        "w",
-        encoding="utf-8"
-    ) as f:
-
+    # Save
+    os.makedirs("output/reports", exist_ok=True)
+    with open(REPORT_TEXT_PATH, "w", encoding="utf-8") as f:
         f.write(final_report)
 
-    print(
-        f"Report saved: {REPORT_TEXT_PATH}"
-    )
-
+    print(f"\nReport saved: {REPORT_TEXT_PATH}")
     return final_report
-
 
 # =========================================================
 # MAIN
 # =========================================================
 
 def main():
-
-    print(
-        "Generating SOC report..."
-    )
+    print("=" * 60)
+    print("SOC REPORT GENERATION")
+    print("=" * 60)
+    print()
 
     generate_report()
 
-    print(
-        "SOC report generated successfully."
-    )
-
+    print()
+    print("=" * 60)
+    print("Report generation complete.")
+    print("=" * 60)
 
 if __name__ == "__main__":
     main()

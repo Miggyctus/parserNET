@@ -85,12 +85,37 @@ def model_session():
 # Utils
 # =========================
 
-def extract_chart_placeholders(report_text):
-    pattern = r"\{\{CHART:\s*([a-z0-9_]+)\s*\}\}"
-    matches = re.findall(pattern, report_text)
+def extract_chart_placeholders_from_findings():
+    """Extract chart IDs from consolidated findings metadata instead of report text."""
+    consolidated_path = "output/consolidated_findings.json"
 
-    # eliminar duplicados
-    return list(dict.fromkeys(matches))
+    if not os.path.exists(consolidated_path):
+        print("[WARN] No consolidated findings found")
+        return []
+
+    try:
+        with open(consolidated_path, "r", encoding="utf-8") as f:
+            consolidated = json.load(f)
+
+        # Collect chart recommendations from all findings
+        charts = set()
+        findings = consolidated.get("findings", [])
+
+        for finding in findings:
+            recommended_charts = finding.get("recommended_sections", [])
+            # Also check for explicit chart metadata if available
+            if "chart_candidate" in finding and finding["chart_candidate"]:
+                # Generate chart ID from finding title
+                title = finding.get("title", "").lower()
+                chart_id = re.sub(r"[^a-z0-9]+", "_", title)[:50]
+                if chart_id:
+                    charts.add(chart_id)
+
+        return list(charts)
+
+    except Exception as e:
+        print(f"[ERROR] Could not extract charts from findings: {e}")
+        return []
 
 
 def load_report_text():
@@ -418,9 +443,8 @@ def clean_json_output(raw: str, placeholders: list):
 
 def main():
 
-    report_text = load_report_text()
     intelligence_batches = load_intelligence_batches()
-    placeholders = extract_chart_placeholders(report_text)
+    placeholders = extract_chart_placeholders_from_findings()
 
     if not placeholders:
         print("No chart placeholders found.")

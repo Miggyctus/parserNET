@@ -1,6 +1,7 @@
 import requests
 
 from client_csv import generate_csv_intelligence
+from consolidate_findings import consolidate
 from client_report import generate_report
 from client_charts import main as run_charts
 
@@ -18,6 +19,16 @@ def run():
     generate_csv_intelligence()
 
     print("CSV intelligence generated.")
+
+    # =========================
+    # 1.5️⃣ Consolidate findings
+    # =========================
+
+    print("Consolidating and deduplicating findings...")
+
+    consolidate()
+
+    print("Findings consolidated.")
 
     # =========================
     # 2️⃣ Generate SOC report
