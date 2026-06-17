@@ -217,6 +217,12 @@ STYLE:
 - Data-driven (cite numbers from key_evidence)
 - Analytical (explain implications, not just facts)
 - Concise (total section ~400-600 words)
+- USE BOLD for emphasis: **important terms**, **numbers**, **findings titles**
+
+FORMATTING:
+- Use **bold text** (with asterisks) for emphasis, key metrics, and finding titles
+- Use numbered lists for recommendations: 1. item, 2. item, 3. item
+- Use bullet points for evidence details: - item, - item
 
 OUTPUT:
 Raw section content only. No section header, no title—just the body text starting with the intro.
