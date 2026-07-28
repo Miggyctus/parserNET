@@ -8,9 +8,9 @@ import csv
 from openai import OpenAI
 from contextlib import contextmanager
 
-# =========================================================
-# CONFIG
-# =========================================================
+# =========================
+# Configuración
+# =========================
 
 BASE_URL = "http://localhost:1234/v1"
 
@@ -24,13 +24,7 @@ OUTPUT_DIR = "output/intelligence"
 
 CSV_BATCH_SIZE = 1
 
-MAX_ROWS_PER_CHUNK = 250
-
-MAX_RETRIES = 3
-
-# =========================================================
-# CLIENT
-# =========================================================
+MAX_ROWS_PER_CHUNK = 400
 
 client = OpenAI(
     base_url=BASE_URL,
@@ -40,9 +34,10 @@ client = OpenAI(
 
 MODEL_INSTANCE_ID = None
 
-# =========================================================
-# MODEL LOAD / UNLOAD
-# =========================================================
+
+# =========================
+# Model Load / Unload
+# =========================
 
 def load_model():
 
@@ -53,7 +48,6 @@ def load_model():
         "context_length": 72000,
         "eval_batch_size": 256,
         "offload_kv_cache_to_gpu": True,
-        "flash_attention": True,
         "echo_load_config": True
     }
 
@@ -64,7 +58,6 @@ def load_model():
     )
 
     if response.status_code != 200:
-
         raise RuntimeError(
             f"Failed to load model: {response.text}"
         )
@@ -72,18 +65,13 @@ def load_model():
     data = response.json()
 
     if data.get("status") != "loaded":
-
         raise RuntimeError(
             f"Model failed to load: {data}"
         )
 
-    MODEL_INSTANCE_ID = data.get(
-        "instance_id"
-    )
+    MODEL_INSTANCE_ID = data.get("instance_id")
 
-    print(
-        "CSV Analysis model loaded"
-    )
+    print("CSV Analysis model loaded")
 
 
 def unload_model():
@@ -95,17 +83,13 @@ def unload_model():
 
     requests.post(
         "http://localhost:1234/api/v1/models/unload",
-        json={
-            "instance_id": MODEL_INSTANCE_ID
-        },
+        json={"instance_id": MODEL_INSTANCE_ID},
         timeout=60
     )
 
     MODEL_INSTANCE_ID = None
 
-    print(
-        "CSV Analysis model unloaded"
-    )
+    print("CSV Analysis model unloaded")
 
 
 @contextmanager
@@ -119,9 +103,10 @@ def model_session():
     finally:
         unload_model()
 
-# =========================================================
-# UTILS
-# =========================================================
+
+# =========================
+# Utils
+# =========================
 
 def load_system_prompt():
 
@@ -131,14 +116,8 @@ def load_system_prompt():
         encoding="utf-8"
     ) as f:
 
-        return json.load(f)[
-            "system_prompt"
-        ]
+        return json.load(f)["system_prompt"]
 
-
-# =========================================================
-# CSV LOADER
-# =========================================================
 
 def load_all_csv(
     folder_path: str,
@@ -169,9 +148,9 @@ def load_all_csv(
 
                 rows = list(reader)
 
-            # =================================================
-            # SMALL CSV
-            # =================================================
+            # =========================
+            # Small CSV
+            # =========================
 
             if len(rows) <= max_rows_per_chunk:
 
@@ -179,9 +158,9 @@ def load_all_csv(
 
                 continue
 
-            # =================================================
-            # CHUNK LARGE CSV
-            # =================================================
+            # =========================
+            # Chunk Large CSV
+            # =========================
 
             chunk_index = 1
 
@@ -214,18 +193,12 @@ def load_all_csv(
     return csv_data
 
 
-# =========================================================
-# BATCHING
-# =========================================================
-
 def batch_csv_files(
     csv_data,
-    batch_size=CSV_BATCH_SIZE
+    batch_size=2
 ):
 
-    items = list(
-        csv_data.items()
-    )
+    items = list(csv_data.items())
 
     batches = []
 
@@ -244,129 +217,46 @@ def batch_csv_files(
     return batches
 
 
-# =========================================================
-# PROMPT BUILDER
-# =========================================================
+# =========================
+# Prompt Builder
+# =========================
 
 def build_analysis_prompt(csv_data):
 
-    telemetry_json = json.dumps(
-        csv_data,
-        separators=(",", ":"),
-        ensure_ascii=False
-    )
-
     return f"""
-You are a SOC telemetry intelligence engine.
+Analyze the following heterogeneous SOC telemetry datasets.
 
 OBJECTIVE:
-
-Analyze security telemetry and generate concise structured SOC findings.
-
-STRICT RULES:
-
-- Use ONLY provided telemetry
-- Do NOT hallucinate
-- Do NOT invent data
-- Output JSON ONLY
-- No markdown
-- No explanations
-- No prose outside JSON
+Generate structured telemetry intelligence JSON.
 
 IMPORTANT:
+- Detect semantic meaning dynamically
+- Detect anomalies
+- Reduce repetitive telemetry
+- Generate high-value summaries
+- Detect high-signal entities
+- Recommend useful visualizations
+- Preserve security context
+- Use ONLY provided telemetry
 
-Generate concise consolidated findings.
-
-Merge related telemetry into unified analytical findings.
-
-Avoid redundant findings describing the same activity.
-
-Each finding must represent an analytical insight, not individual events.
-
-Each summary must be under 60 words.
-
-Maximum 3 key_evidence items per finding.
-
-OUTPUT FORMAT:
-
-{{
-  "findings": [
-    {{
-      "title": "short finding title",
-
-      "finding_type": "authentication_anomaly",
-
-      "summary": "concise analytical summary",
-
-      "severity": "low | medium | high | critical",
-
-      "tags": [
-        "authentication",
-        "vpn",
-        "failed_logins"
-      ],
-
-      "recommended_sections": [
-        "TOP LOGIN",
-        "REPORTE DE ALERTAS, INCIDENTES Y SUGERENCIAS"
-      ],
-
-      "chart_candidate": true,
-
-      "chart_priority": 85,
-
-      "key_evidence": [
-        "3812 failed VPN logins",
-        "17 external IPs involved",
-        "5 privileged accounts targeted"
-      ]
-    }}
-  ]
-}}
-
-SECTION OPTIONS:
-
-- "RESUMEN DE CASOS"
-- "TOP DE ORIGEN DE ATAQUES"
-- "ACTIVIDADES SOSPECHOSAS – MALWARE - AMENAZAS"
-- "TOP LOGIN"
-- "DIRECTORIO ACTIVO"
-- "ACTIVIDAD DE USUARIOS ADMINISTRADORES"
-- "CAMBIOS EN EQUIPOS DE COMUNICACIONES"
-- "REPORTE DE ALERTAS, INCIDENTES Y SUGERENCIAS"
-- "REPORTE DE VOLUMEN DE LOGS"
+STRICT RULES:
+- Output JSON ONLY
+- NO markdown
+- NO explanations
+- NO prose
+- NO hallucinations
 
 TELEMETRY DATA:
-{telemetry_json}
+{json.dumps(csv_data, separators=(",", ":"), ensure_ascii=False)}
 
 OUTPUT:
 Raw JSON only.
 """
 
 
-# =========================================================
-# JSON CLEANER
-# =========================================================
-
-def attempt_json_repair(candidate):
-
-    try:
-
-        last_brace = candidate.rfind("}")
-
-        if last_brace != -1:
-
-            repaired = candidate[
-                :last_brace + 1
-            ]
-
-            return json.loads(repaired)
-
-    except Exception:
-        pass
-
-    return None
-
+# =========================
+# JSON Cleaner
+# =========================
 
 def clean_json(raw: str):
 
@@ -403,9 +293,7 @@ def clean_json(raw: str):
 
     candidate = match.group(0)
 
-    # =====================================================
-    # CLEAN COMMON ISSUES
-    # =====================================================
+    # remove trailing commas
 
     candidate = re.sub(
         r",\s*([}\]])",
@@ -425,150 +313,17 @@ def clean_json(raw: str):
     except json.JSONDecodeError as e:
 
         print("\n========= INVALID JSON =========")
-        print(candidate[:5000])
+        print(candidate[:4000])
         print("================================\n")
-
-        repaired = attempt_json_repair(
-            candidate
-        )
-
-        if repaired is not None:
-            return repaired
 
         raise RuntimeError(
             f"Failed parsing JSON: {e}"
         )
 
 
-# =========================================================
-# FINDING VALIDATION
-# =========================================================
-
-def validate_findings_structure(parsed):
-
-    if not isinstance(parsed, dict):
-        return {"findings": []}
-
-    findings = parsed.get("findings")
-
-    if not isinstance(findings, list):
-        return {"findings": []}
-
-    normalized_findings = []
-
-    for finding in findings:
-
-        if not isinstance(finding, dict):
-            continue
-
-        normalized = {
-
-            "title": str(
-                finding.get("title", "")
-            ),
-
-            "finding_type": str(
-                finding.get(
-                    "finding_type",
-                    "general"
-                )
-            ),
-
-            "summary": str(
-                finding.get("summary", "")
-            ),
-
-            "severity": str(
-                finding.get(
-                    "severity",
-                    "medium"
-                )
-            ).lower(),
-
-            "tags": finding.get(
-                "tags",
-                []
-            ),
-
-            "recommended_sections": finding.get(
-                "recommended_sections",
-                []
-            ),
-
-            "chart_candidate": bool(
-                finding.get(
-                    "chart_candidate",
-                    False
-                )
-            ),
-
-            "chart_priority": int(
-                finding.get(
-                    "chart_priority",
-                    50
-                )
-            ),
-
-            "key_evidence": finding.get(
-                "key_evidence",
-                []
-            )
-        }
-
-        # =================================================
-        # NORMALIZATION
-        # =================================================
-
-        if not isinstance(
-            normalized["tags"],
-            list
-        ):
-            normalized["tags"] = []
-
-        if not isinstance(
-            normalized["recommended_sections"],
-            list
-        ):
-            normalized["recommended_sections"] = []
-
-        if not isinstance(
-            normalized["key_evidence"],
-            list
-        ):
-            normalized["key_evidence"] = []
-
-        # =================================================
-        # LIMIT SECTION SPAM
-        # =================================================
-
-        normalized["recommended_sections"] = (
-            normalized[
-                "recommended_sections"
-            ][:3]
-        )
-
-        # =================================================
-        # LIMIT EVIDENCE SIZE
-        # =================================================
-
-        normalized["key_evidence"] = (
-            normalized[
-                "key_evidence"
-            ][:3]
-        )
-
-        normalized_findings.append(
-            normalized
-        )
-
-    return {
-        "findings": normalized_findings
-    }
-
-
-# =========================================================
-# SAVE BATCH INTELLIGENCE
-# =========================================================
+# =========================
+# Save Batch Intelligence
+# =========================
 
 def save_batch_intelligence(
     batch_index,
@@ -603,9 +358,9 @@ def save_batch_intelligence(
     )
 
 
-# =========================================================
-# BATCH LLM ANALYSIS
-# =========================================================
+# =========================
+# Batch LLM Analysis
+# =========================
 
 def analyze_csv_batches(
     system_prompt,
@@ -625,69 +380,31 @@ def analyze_csv_batches(
             batch
         )
 
-        parsed = None
+        completion = client.chat.completions.create(
+            model=MODEL_ID,
+            messages=[
+                {
+                    "role": "system",
+                    "content": system_prompt
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            temperature=0,
+            top_p=0.7,
+            max_tokens=12000
+        )
 
-        for attempt in range(
-            MAX_RETRIES
-        ):
+        response = (
+            completion
+            .choices[0]
+            .message
+            .content
+        )
 
-            try:
-
-                completion = client.chat.completions.create(
-
-                    model=MODEL_ID,
-
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": system_prompt
-                        },
-                        {
-                            "role": "user",
-                            "content": prompt
-                        }
-                    ],
-
-                    temperature=0,
-
-                    top_p=0.15,
-
-                    max_tokens=4500
-                )
-
-                response = (
-                    completion
-                    .choices[0]
-                    .message
-                    .content
-                )
-
-                parsed = clean_json(
-                    response
-                )
-
-                parsed = (
-                    validate_findings_structure(
-                        parsed
-                    )
-                )
-
-                break
-
-            except Exception as e:
-
-                print(
-                    f"Attempt "
-                    f"{attempt + 1} failed: {e}"
-                )
-
-        if parsed is None:
-
-            print(
-                f"Skipping batch {idx + 1}"
-            )
-
-            continue
+        parsed = clean_json(response)
 
         save_batch_intelligence(
             idx,
@@ -695,9 +412,9 @@ def analyze_csv_batches(
         )
 
 
-# =========================================================
-# MAIN PIPELINE
-# =========================================================
+# =========================
+# Main Pipeline
+# =========================
 
 def generate_csv_intelligence():
 

@@ -1,38 +1,29 @@
 import json
 import os
-import re
 import httpx
 import requests
-
 from openai import OpenAI
 from contextlib import contextmanager
-from typing import Dict, Any
+import fitz
 
-# =========================================================
-# CONFIG
-# =========================================================
+# =========================
+# Configuración
+# =========================
 
 BASE_URL = "http://localhost:1234/v1"
-MODEL_ID = "gpt-oss-20b"
+#foundation-sec-8b-reasoning
+#glm-4.7-flash-claude-opus-4.5-high-reasoning-distill
+MODEL_ID = "foundation-sec-8b-reasoning"
 PROMPT_FILE = "prompt_report.json"
+CHART_JSON_PATH = "output/json/llm_output.json"
 REPORT_TEXT_PATH = "output/reports/llm_report.txt"
-CONSOLIDATED_FINDINGS_PATH = "output/consolidated_findings.json"
-
-# =========================================================
-# CLIENT
-# =========================================================
+INTELLIGENCE_DIR = "output/intelligence"
 
 client = OpenAI(
     base_url=BASE_URL,
     api_key="lm-studio",
     http_client=httpx.Client(timeout=9999.0)
 )
-
-MODEL_INSTANCE_ID = None
-
-# =========================================================
-# SECTIONS (IN ORDER)
-# =========================================================
 
 SECTIONS = [
     "PORTADA E INDICE",
@@ -50,34 +41,29 @@ SECTIONS = [
     "REPORTE DE VOLUMEN DE LOGS",
     "CONCLUSION"
 ]
-
 SECTION_TOKEN_LIMITS = {
-    "PORTADA E INDICE": 1500,
-    "RESUMEN EJECUTIVO": 2000,
-    "INTRODUCCIÓN": 1500,
-    "EQUIPOS MONITOREADOS A LA FECHA": 2000,
-    "RESUMEN DE CASOS": 2500,
-    "TOP DE ORIGEN DE ATAQUES": 5000,
-    "ACTIVIDADES SOSPECHOSAS – MALWARE - AMENAZAS": 5500,
-    "TOP LOGIN": 6000,
-    "DIRECTORIO ACTIVO": 5500,
-    "ACTIVIDAD DE USUARIOS ADMINISTRADORES": 6000,
-    "CAMBIOS EN EQUIPOS DE COMUNICACIONES": 2500,
-    "REPORTE DE ALERTAS, INCIDENTES Y SUGERENCIAS": 6000,
-    "REPORTE DE VOLUMEN DE LOGS": 2500,
-    "CONCLUSION": 2000
+    "PORTADA E INDICE": 2800,
+    "RESUMEN EJECUTIVO": 3000,
+    "INTRODUCCIÓN": 2500,
+    "EQUIPOS MONITOREADOS A LA FECHA": 7000,
+    "RESUMEN DE CASOS": 8000,
+    "TOP DE ORIGEN DE ATAQUES": 10000,
+    "ACTIVIDADES SOSPECHOSAS – MALWARE - AMENAZAS": 10000,
+    "TOP LOGIN": 5000,
+    "DIRECTORIO ACTIVO": 9000,
+    "ACTIVIDAD DE USUARIOS ADMINISTRADORES": 5000,
+    "CAMBIOS EN EQUIPOS DE COMUNICACIONES": 4500,
+    "REPORTE DE ALERTAS, INCIDENTES Y SUGERENCIAS": 12000,
+    "REPORTE DE VOLUMEN DE LOGS": 6000,
+    "CONCLUSION": 4000
 }
 
-NO_CHART_SECTIONS = {
-    "PORTADA E INDICE",
-    "INTRODUCCIÓN",
-    "RESUMEN EJECUTIVO",
-    "CONCLUSION"
-}
+# =========================
+# Model Load / Unload
+# =========================
 
-# =========================================================
-# MODEL SESSION
-# =========================================================
+MODEL_INSTANCE_ID = None
+
 
 def load_model():
     global MODEL_INSTANCE_ID
@@ -87,7 +73,6 @@ def load_model():
         "context_length": 49000,
         "eval_batch_size": 256,
         "offload_kv_cache_to_gpu": True,
-        "flash_attention": True,
         "echo_load_config": True
     }
 
@@ -101,11 +86,13 @@ def load_model():
         raise RuntimeError(f"Failed to load model: {response.text}")
 
     data = response.json()
+
     if data.get("status") != "loaded":
         raise RuntimeError(f"Model failed to load: {data}")
 
     MODEL_INSTANCE_ID = data.get("instance_id")
     print("Report model loaded")
+
 
 def unload_model():
     global MODEL_INSTANCE_ID
@@ -122,6 +109,7 @@ def unload_model():
     MODEL_INSTANCE_ID = None
     print("Report model unloaded")
 
+
 @contextmanager
 def model_session():
     load_model()
@@ -130,249 +118,194 @@ def model_session():
     finally:
         unload_model()
 
-# =========================================================
-# LOADERS
-# =========================================================
+
+# =========================
+# Utils
+# =========================
 
 def load_system_prompt():
     with open(PROMPT_FILE, "r", encoding="utf-8") as f:
         return json.load(f)["system_prompt"]
 
-def load_consolidated_findings() -> Dict[str, Any]:
-    if not os.path.exists(CONSOLIDATED_FINDINGS_PATH):
-        return {"findings": [], "by_section": {}}
 
-    with open(CONSOLIDATED_FINDINGS_PATH, "r", encoding="utf-8") as f:
+def load_chart_json():
+    if not os.path.exists(CHART_JSON_PATH):
+        return {}
+    with open(CHART_JSON_PATH, "r", encoding="utf-8") as f:
         return json.load(f)
 
-# =========================================================
-# FINDING RETRIEVAL
-# =========================================================
+def load_intelligence_batches():
 
-def get_findings_for_section(section: str, consolidated: Dict[str, Any]):
-    """Get findings assigned to this section."""
-    by_section = consolidated.get("by_section", {})
-    return by_section.get(section, [])
+    intelligence_batches = []
 
-# =========================================================
-# CHART LIMITER
-# =========================================================
+    if not os.path.exists(INTELLIGENCE_DIR):
+        return intelligence_batches
 
-def remove_all_charts(content: str) -> str:
-    pattern = r"\{\{CHART:.*?\}\}"
-    return re.sub(pattern, "", content, flags=re.DOTALL)
-
-# =========================================================
-# PROMPT BUILDERS (SIMPLIFIED)
-# =========================================================
-
-def build_section_prompt(
-    section: str,
-    findings: list,
-    previous_sections_text: str = ""
-) -> str:
-    """
-    Structured prompt that guides substantive analysis from findings.
-    Key: force the LLM to actually analyze and structure findings content.
-    """
-
-    findings_json = json.dumps(
-        findings,
-        separators=(",", ":"),
-        ensure_ascii=False
+    files = sorted(
+        os.listdir(INTELLIGENCE_DIR)
     )
 
-    context_instruction = ""
-    if previous_sections_text:
-        context_instruction = f"""
-PREVIOUSLY COVERED (don't repeat):
-{previous_sections_text[:1500]}
+    for file in files:
 
----
-AVOID REPEATING the above. Focus only on findings NOT yet discussed.
-"""
+        if not file.endswith(".json"):
+            continue
 
-    no_chart_instruction = ""
-    if section in NO_CHART_SECTIONS:
-        no_chart_instruction = "\n\nDo NOT insert any chart placeholders {{{{CHART:...}}}} in this section."
-
-    return f"""Generate ONLY the "{section}" section for a formal SOC audit report.
-
-FINDINGS TO ANALYZE ({len(findings)} findings):
-{findings_json}
-
-{context_instruction}
-
-STRUCTURE (mandatory):
-1. INTRO: 1-2 sentences summarizing the key findings/themes for this section
-2. FINDINGS ANALYSIS: For EACH finding (in order), write 2-3 sentences covering:
-   - What was detected (from title + summary)
-   - The evidence (from key_evidence)
-   - The significance/implication
-3. PATTERNS: If multiple findings share a theme, identify the pattern
-4. RECOMMENDATIONS: 2-3 bulleted action items specific to these findings
-
-STYLE:
-- Professional SOC language (Spanish, formal)
-- Data-driven (cite numbers from key_evidence)
-- Analytical (explain implications, not just facts)
-- Concise (total section ~400-600 words)
-- USE BOLD for emphasis: **important terms**, **numbers**, **findings titles**
-
-FORMATTING:
-- Use **bold text** (with asterisks) for emphasis, key metrics, and finding titles
-- Use numbered lists for recommendations: 1. item, 2. item, 3. item
-- Use bullet points for evidence details: - item, - item
-
-OUTPUT:
-Raw section content only. No section header, no title—just the body text starting with the intro.
-Maximum 2 chart placeholders total (format: {{{{CHART: chart_id}}}})
-{no_chart_instruction}
-"""
-
-# =========================================================
-# SECTION GENERATION
-# =========================================================
-
-def generate_section(
-    section: str,
-    system_prompt: str,
-    findings: list,
-    previous_sections_text: str = ""
-) -> str:
-    """
-    Generate a single section with context awareness.
-    Previous sections passed in to prevent repetition.
-    """
-
-    prompt = build_section_prompt(section, findings, previous_sections_text)
-    max_tokens = SECTION_TOKEN_LIMITS.get(section, 2000)
-
-    try:
-        completion = client.chat.completions.create(
-            model=MODEL_ID,
-            messages=[
-                {
-                    "role": "system",
-                    "content": system_prompt
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ],
-            temperature=0.05,
-            top_p=0.35,
-            max_tokens=max_tokens
+        path = os.path.join(
+            INTELLIGENCE_DIR,
+            file
         )
 
-        message = completion.choices[0].message
-        if not message or not message.content:
-            raise RuntimeError(f"Empty response for section: {section}")
+        try:
 
-        content = message.content.strip()
+            with open(
+                path,
+                "r",
+                encoding="utf-8"
+            ) as f:
 
-        # Enforce chart rules
-        if section in NO_CHART_SECTIONS:
-            content = remove_all_charts(content)
-        else:
-            # Limit to max 2 charts
-            charts = re.findall(r"\{\{CHART:.*?\}\}", content, flags=re.DOTALL)
-            if len(charts) > 2:
-                content = re.sub(r"\{\{CHART:.*?\}\}", "", content, flags=re.DOTALL, count=len(charts) - 2)
+                intelligence_batches.append(
+                    json.load(f)
+                )
 
-        return content
+        except Exception as e:
 
-    except Exception as e:
-        print(f"Error generating {section}: {e}")
+            print(
+                f"Failed loading {file}: {e}"
+            )
+
+    return intelligence_batches
+
+def load_reference_report():
+    path = "SOC_Reporte_Modelo_NETLOGIC.pdf"
+
+    if not os.path.exists(path):
         return ""
 
-# =========================================================
-# REPORT ASSEMBLY
-# =========================================================
+    text = []
 
-def assemble_report(sections_content: Dict[str, str]) -> str:
-    """Assemble final report from section contents."""
+    with fitz.open(path) as doc:
+        for page in doc:
+            text.append(page.get_text())
+
+    return "\n".join(text)
+    
+# =========================
+# LLM Call
+# =========================
+
+def build_section_prompt(section, intelligence_batches, reference):
+    return f"""
+    You are generating a SOC report section.
+
+    SECTION: {section}
+
+    STRICT RULES:
+    - Only generate THIS section
+    - Do NOT generate other sections
+    - Use telemetry data strictly
+    - Insert chart placeholders only when needed, following the naming rules
+    - NO charts for the "PORTADA E INDICE", "INTRODUCCIÓN" "RESUMEN EJECUTIVO" and "CONCLUSION" sections
+    - MAXIMUM 2 charts per section, only if they add value to the section
+    - use charts only when they add real analytical value
+    - NEVER reuse the same chart_identifier across sections 
+    - No repetition of charts across sections
+
+    === DATA ===
+    {json.dumps(intelligence_batches, separators=(',', ':'))}
+
+    === STYLE REFERENCE ===
+    {reference}
+
+    Generate ONLY the section content.
+    """
+
+def generate_section(section, system_prompt, intelligence_batches, reference):
+    prompt = build_section_prompt(section, intelligence_batches, reference)
+    maxTokens = SECTION_TOKEN_LIMITS.get(section, 2000)
+    completion = client.chat.completions.create(
+        model=MODEL_ID,
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.1,
+        top_p=0.7,
+        max_tokens=maxTokens,
+    )
+    message = completion.choices[0].message
+
+    if not message:
+        raise RuntimeError(f"LLM returned empty response for section {section}")
+
+    return message.content
+
+def assemble_report(sections_content):
     report = []
 
-    for section in SECTIONS:
-        content = sections_content.get(section, "")
-        if content.strip():
-            report.append(f"\n# {section}\n\n{content}")
+    titles = {
+    "portada_e_indice": "PORTADA E INDICE",
+    "resumen_ejecutivo": "RESUMEN EJECUTIVO",
+    "introduccion": "INTRODUCCIÓN",
+    "equipos_monitoreados": "EQUIPOS MONITOREADOS A LA FECHA",
+    "resumen_casos": "RESUMEN DE CASOS",
+    "top_origen_ataques": "TOP DE ORIGEN DE ATAQUES",
+    "actividades_sospechosas": "ACTIVIDADES SOSPECHOSAS – MALWARE - AMENAZAS",
+    "top_login": "TOP LOGIN",
+    "directorio_activo": "DIRECTORIO ACTIVO",
+    "actividad_admins": "ACTIVIDAD DE USUARIOS ADMINISTRADORES",
+    "cambios_comunicaciones": "CAMBIOS EN EQUIPOS DE COMUNICACIONES",
+    "reporte_alertas": "REPORTE DE ALERTAS, INCIDENTES Y SUGERENCIAS",
+    "reporte_volumen_logs": "REPORTE DE VOLUMEN DE LOGS",
+    "conclusion": "CONCLUSION"
+}
+
+    for section, content in sections_content.items():
+
+        key = section.lower().replace(" ", "_")
+
+        report.append(f"\n\n {titles.get(key, section)}\n\n{content}")
 
     return "\n".join(report)
 
-# =========================================================
-# MAIN GENERATION
-# =========================================================
+
+# =========================
+# Public Function
+# =========================
 
 def generate_report():
-    """
-    Sequential section generation with context awareness.
-    Each section knows about previous sections to prevent repetition.
-    """
-
-    print("Loading consolidated findings...")
-    consolidated = load_consolidated_findings()
-    total_findings = consolidated.get("total_findings", 0)
-    print(f"  Loaded {total_findings} consolidated findings")
 
     system_prompt = load_system_prompt()
-    sections_content = {}
-    accumulated_text = ""
+    chart_data = load_chart_json()
+    intelligence_batches = load_intelligence_batches()
+    reference = load_reference_report()
+
+    sections_content ={}
 
     with model_session():
-
         for section in SECTIONS:
-
-            print(f"Generating: {section}")
-
-            # Get findings for this section
-            findings = get_findings_for_section(section, consolidated)
-            finding_count = len(findings)
-            print(f"  {finding_count} findings for this section")
-
-            # Generate with context from previous sections
+            print(f"Generating {section}...")
             content = generate_section(
-                section=section,
-                system_prompt=system_prompt,
-                findings=findings,
-                previous_sections_text=accumulated_text
+                section,
+                system_prompt,
+                intelligence_batches,
+                reference
             )
-
             sections_content[section] = content
-            accumulated_text += f"\n# {section}\n{content}"
+        final_report = assemble_report(sections_content)
 
-            if not content.strip():
-                print(f"  WARNING: Empty content for {section}")
+        os.makedirs("output/reports", exist_ok=True)
 
-    # Assemble final report
-    final_report = assemble_report(sections_content)
+        with open(REPORT_TEXT_PATH, "w", encoding="utf-8") as f:
+            f.write(final_report)
 
-    # Save
-    os.makedirs("output/reports", exist_ok=True)
-    with open(REPORT_TEXT_PATH, "w", encoding="utf-8") as f:
-        f.write(final_report)
+        return final_report
 
-    print(f"\nReport saved: {REPORT_TEXT_PATH}")
-    return final_report
-
-# =========================================================
-# MAIN
-# =========================================================
 
 def main():
-    print("=" * 60)
-    print("SOC REPORT GENERATION")
-    print("=" * 60)
-    print()
-
+    print("Generating audit report...")
     generate_report()
+    print("Report generated successfully.")
 
-    print()
-    print("=" * 60)
-    print("Report generation complete.")
-    print("=" * 60)
 
 if __name__ == "__main__":
     main()

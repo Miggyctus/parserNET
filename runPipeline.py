@@ -11,26 +11,6 @@ BACKEND_URL = "http://localhost:8000/execute"
 def run():
 
     # =========================
-    # 1️⃣ Analyze CSV telemetry
-    # =========================
-
-    print("Generating CSV intelligence...")
-
-    generate_csv_intelligence()
-
-    print("CSV intelligence generated.")
-
-    # =========================
-    # 1.5️⃣ Consolidate findings
-    # =========================
-
-    print("Consolidating and deduplicating findings...")
-
-    consolidate()
-
-    print("Findings consolidated.")
-
-    # =========================
     # 2️⃣ Generate SOC report
     # =========================
 
