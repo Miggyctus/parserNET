@@ -1,5 +1,5 @@
-venv
-bkp
+/venv
+/bkp
 input_csv
 output
 pcep.py
