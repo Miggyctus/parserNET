@@ -99,10 +99,14 @@ def add_unordered_list(lines):
 def add_ordered_list(lines):
     for line in lines:
 
-        text = re.sub(r"^\d+\.\s+", "", line.strip())
+        # Word's built-in "List Number" style shares a single continuous
+        # numbering across the whole document, so independent lists from
+        # different sections end up renumbered together. Keep the literal
+        # number the model wrote instead of relying on Word to render it.
+        text = clean_text(line.strip())
 
-        paragraph = doc.add_paragraph(style="List Number")
-        add_bold_runs(paragraph, clean_text(text))
+        paragraph = doc.add_paragraph()
+        add_bold_runs(paragraph, text)
 
 
 # =========================================================
