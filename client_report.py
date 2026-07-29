@@ -207,13 +207,14 @@ def build_section_prompt(section, intelligence_batches, reference):
     - NO charts for the "PORTADA E INDICE", "INTRODUCCIÓN" "RESUMEN EJECUTIVO" and "CONCLUSION" sections
     - MAXIMUM 2 charts per section, only if they add value to the section
     - use charts only when they add real analytical value
-    - NEVER reuse the same chart_identifier across sections 
+    - NEVER reuse the same chart_identifier across sections
     - No repetition of charts across sections
+    - NEVER generate two HALLAZGO entries with the same or substantially similar Evidencia Directa. Prefer fewer, distinct findings over padding.
 
-    === DATA ===
+    === DATA (real telemetry intelligence — the only source for IPs, usernames, hosts, event counts, and dates of events) ===
     {json.dumps(intelligence_batches, separators=(',', ':'))}
 
-    === STYLE REFERENCE ===
+    === STYLE REFERENCE (excerpt from a DIFFERENT client's past report — imitate ONLY its tone, structure and formatting. NEVER copy a placeholder like [NOMBRE_EMPRESA]/[IP]/[DD/MM/AAAA], or any company name, IP, date, hostname or number from this section into your output) ===
     {reference}
 
     Generate ONLY the section content.

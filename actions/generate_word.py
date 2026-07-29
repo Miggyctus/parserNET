@@ -64,12 +64,13 @@ def add_heading_from_markdown(line):
     doc.add_heading(text, level=level)
 
 
-def add_paragraph_with_bold(text):
-    paragraph = doc.add_paragraph()
-
+def add_bold_runs(paragraph, text):
     parts = re.split(r"(\*\*.*?\*\*)", text)
 
     for part in parts:
+
+        if not part:
+            continue
 
         if part.startswith("**") and part.endswith("**"):
             clean = part[2:-2]
@@ -81,15 +82,18 @@ def add_paragraph_with_bold(text):
             paragraph.add_run(part)
 
 
+def add_paragraph_with_bold(text):
+    paragraph = doc.add_paragraph()
+    add_bold_runs(paragraph, text)
+
+
 def add_unordered_list(lines):
     for line in lines:
 
         text = re.sub(r"^[\-\*]\s+", "", line.strip())
 
-        doc.add_paragraph(
-            clean_text(text),
-            style="List Bullet"
-        )
+        paragraph = doc.add_paragraph(style="List Bullet")
+        add_bold_runs(paragraph, clean_text(text))
 
 
 def add_ordered_list(lines):
@@ -97,10 +101,8 @@ def add_ordered_list(lines):
 
         text = re.sub(r"^\d+\.\s+", "", line.strip())
 
-        doc.add_paragraph(
-            clean_text(text),
-            style="List Number"
-        )
+        paragraph = doc.add_paragraph(style="List Number")
+        add_bold_runs(paragraph, clean_text(text))
 
 
 # =========================================================
@@ -169,10 +171,11 @@ def add_table_from_markdown(table_lines):
 
     for row_idx, row in enumerate(normalized_rows):
 
-        for col_idx, cell in enumerate(row):
+        for col_idx, cell_text in enumerate(row):
 
             try:
-                table.rows[row_idx].cells[col_idx].text = clean_text(cell)
+                cell = table.rows[row_idx].cells[col_idx]
+                add_bold_runs(cell.paragraphs[0], clean_text(cell_text))
 
             except Exception as e:
                 print(
