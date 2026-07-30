@@ -175,6 +175,9 @@ def load_intelligence_batches():
 
     return intelligence_batches
 
+REFERENCE_MAX_CHARS = 6000
+
+
 def load_reference_report():
     path = "SOC_Reporte_Modelo_NETLOGIC.pdf"
 
@@ -187,7 +190,10 @@ def load_reference_report():
         for page in doc:
             text.append(page.get_text())
 
-    return "\n".join(text)
+    # Truncated on purpose: the full reference is another client's complete
+    # report. Passing it whole leads the model to reproduce entire sections
+    # of it (structure, findings, tables) instead of only imitating tone.
+    return "\n".join(text)[:REFERENCE_MAX_CHARS]
     
 # =========================
 # LLM Call
