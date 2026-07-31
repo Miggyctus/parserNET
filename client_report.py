@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import httpx
 import requests
 from openai import OpenAI
@@ -246,6 +247,85 @@ def generate_section(section, system_prompt, intelligence_batches, reference):
 
     return message.content
 
+FINDING_HEADER_RE = re.compile(r'^(?:HALLAZGO[-\s]?\d+|HAL-[A-Z0-9]+(?:-[A-Z0-9]+)*)\b', re.IGNORECASE)
+
+
+def strip_leaked_index_preamble(section, content):
+    """The local model sometimes prefixes a section with a leaked copy of the
+    report index (PORTADA E INDICE + numbered list of all 14 sections) before
+    finally writing this section's own content. If a later line is just this
+    section's own title, cut everything before it."""
+
+    if section == "PORTADA E INDICE" or not content:
+        return content
+
+    lines = content.split("\n")
+    title_lower = section.strip().lower()
+
+    last_match = None
+    for i, line in enumerate(lines):
+        candidate = re.sub(r'^\d+\.\s*', '', line.strip()).strip().lower()
+        if candidate == title_lower:
+            last_match = i
+
+    if last_match is None or last_match == 0:
+        return content
+
+    return "\n".join(lines[last_match:]).strip()
+
+
+def dedupe_and_cap_findings(content, max_findings=6):
+    """The local model does not reliably obey the prompt's numeric cap on
+    HALLAZGO entries per section, sometimes repeating the same finding
+    dozens of times. Enforce it in code: drop near-duplicate finding blocks
+    and hard-cap the count."""
+
+    if not content:
+        return content
+
+    lines = content.split("\n")
+    header_positions = [
+        i for i, line in enumerate(lines)
+        if FINDING_HEADER_RE.match(line.strip().lstrip('#').lstrip('*').strip())
+    ]
+
+    if len(header_positions) < 2:
+        return content
+
+    preamble = "\n".join(lines[:header_positions[0]]).strip()
+
+    blocks = []
+    for idx, start in enumerate(header_positions):
+        end = header_positions[idx + 1] if idx + 1 < len(header_positions) else len(lines)
+        blocks.append("\n".join(lines[start:end]).strip())
+
+    def fingerprint(block):
+        # Strip the leading HALLAZGO-N / HAL-XXX-NN identifier before
+        # fingerprinting, since two blocks with identical bodies but
+        # different sequence numbers are still the same duplicated finding.
+        first_line, _, rest = block.partition("\n")
+        first_line = FINDING_HEADER_RE.sub("", first_line).lstrip(":| ").strip()
+        normalized = re.sub(r'\s+', ' ', f"{first_line} {rest}").strip().lower()
+        return normalized[:400]
+
+    seen = set()
+    kept = []
+
+    for block in blocks:
+        key = fingerprint(block)
+        if key in seen:
+            continue
+        seen.add(key)
+        kept.append(block)
+        if len(kept) >= max_findings:
+            break
+
+    result = f"{preamble}\n\n" if preamble else ""
+    result += "\n\n".join(kept)
+
+    return result
+
+
 def assemble_report(sections_content):
     report = []
 
@@ -297,6 +377,8 @@ def generate_report():
                 intelligence_batches,
                 reference
             )
+            content = strip_leaked_index_preamble(section, content)
+            content = dedupe_and_cap_findings(content)
             sections_content[section] = content
         final_report = assemble_report(sections_content)
 
